@@ -528,3 +528,24 @@ footer {
 .empty-state p {
     margin-bottom: 15px;
 }
+
+
+/* Toast样式 */
+.toast {
+    position: fixed;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(45deg, #3498db, #2ecc71);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: top 0.3s ease-in-out;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toast.show {
+    top: 20px;
+}
