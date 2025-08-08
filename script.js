@@ -1,0 +1,879 @@
+// 全局变量
+let events = [];
+let workStartTime = localStorage.getItem('workStartTime') || '09:00';
+let workEndTime = localStorage.getItem('workEndTime') || '17:30';
+let holidays = JSON.parse(localStorage.getItem('holidays')) || {};
+let activeTab = 'countdown';
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', () => {
+    // 检查是否首次使用
+    if (!localStorage.getItem('hasVisited')) {
+        showSetupModal();
+    } else {
+        initApp();
+    }
+    
+    // 初始化标签页
+    initTabs();
+    
+    // 设置按钮事件
+    document.getElementById('add-event').addEventListener('click', addCustomEvent);
+    document.getElementById('update-work-time').addEventListener('click', updateWorkTime);
+});
+
+// 初始化应用
+function initApp() {
+    // 从本地存储加载自定义事件
+    loadEventsFromLocalStorage();
+    
+    // 添加预设事件
+    addDefaultEvents();
+    
+    // 渲染所有事件
+    renderEvents();
+    
+    // 设置定时器，每秒更新倒计时
+    setInterval(updateCountdowns, 1000);
+    
+    // 设置工作时间输入框的值
+    document.getElementById('settings-work-start-time').value = workStartTime;
+    document.getElementById('settings-work-end-time').value = workEndTime;
+}
+
+// 显示设置模态框
+function showSetupModal() {
+    const modal = document.getElementById('setup-modal');
+    modal.style.display = 'flex';
+    
+    document.getElementById('save-work-time').addEventListener('click', function() {
+        const startTime = document.getElementById('work-start-time').value;
+        const endTime = document.getElementById('work-end-time').value;
+        
+        if (startTime && endTime) {
+            workStartTime = startTime;
+            workEndTime = endTime;
+            
+            // 保存到本地存储
+            localStorage.setItem('workStartTime', workStartTime);
+            localStorage.setItem('workEndTime', workEndTime);
+            localStorage.setItem('hasVisited', 'true');
+            
+            // 关闭模态框
+            modal.style.display = 'none';
+            
+            // 初始化应用
+            initApp();
+        }
+    });
+}
+
+// 更新工作时间
+function updateWorkTime() {
+    const startTime = document.getElementById('settings-work-start-time').value;
+    const endTime = document.getElementById('settings-work-end-time').value;
+    
+    if (startTime && endTime) {
+        workStartTime = startTime;
+        workEndTime = endTime;
+        
+        // 保存到本地存储
+        localStorage.setItem('workStartTime', workStartTime);
+        localStorage.setItem('workEndTime', workEndTime);
+        
+        // 重新加载事件
+        addDefaultEvents();
+        renderEvents();
+    }
+}
+
+// 从本地存储加载事件
+function loadEventsFromLocalStorage() {
+    const savedEvents = localStorage.getItem('customEvents');
+    if (savedEvents) {
+        const parsedEvents = JSON.parse(savedEvents);
+        // 确保日期对象正确恢复
+        parsedEvents.forEach(event => {
+            if (event.date) {
+                event.date = new Date(event.date);
+            }
+        });
+        // 只加载自定义事件，预设事件会重新添加
+        events = parsedEvents.filter(event => event.type === 'custom');
+    }
+}
+
+// 保存事件到本地存储
+function saveEventsToLocalStorage() {
+    // 只保存自定义事件
+    const customEvents = events.filter(event => event.type === 'custom');
+    localStorage.setItem('customEvents', JSON.stringify(customEvents));
+}
+
+// 添加预设事件
+function addDefaultEvents() {
+    // 清除之前的预设事件
+    events = events.filter(event => event.type === 'custom');
+    
+    // 添加下班时间 - 每工作日
+    events.push({
+        id: 'workday-end',
+        name: '下班时间',
+        type: 'preset',
+        category: 'workday',
+        repeat: 'workdays',
+        time: workEndTime
+    });
+    
+    // 添加午饭时间 - 每天11:30
+    events.push({
+        id: 'lunch-time',
+        name: '午饭时间',
+        type: 'preset',
+        category: 'workday',
+        repeat: 'daily',
+        time: '11:30'
+    });
+    
+    // 添加发工资日 - 每月15日
+    events.push({
+        id: 'salary-day',
+        name: '发工资日',
+        type: 'preset',
+        category: 'payday',
+        repeat: 'monthly',
+        day: 15
+    });
+    
+    // 添加周末 - 最近的周六
+    events.push({
+        id: 'weekend',
+        name: '周末',
+        type: 'preset',
+        category: 'weekend',
+        repeat: 'weekly',
+        dayOfWeek: 6 // 周六
+    });
+    
+    // 添加法定节假日
+    addHolidays();
+}
+
+// 添加中国法定节假日
+function addHolidays() {
+    const currentYear = new Date().getFullYear();
+    const nextYear = currentYear + 1;
+    
+    // 使用Set来避免重复添加相同日期的节假日
+    const addedDates = new Set();
+    
+    const holidays = [
+        // 元旦
+        { id: 'new-year', name: '元旦', month: 1, day: 1, year: currentYear },
+        { id: 'new-year-next', name: '元旦', month: 1, day: 1, year: nextYear },
+        
+        // 春节 (农历新年，这里使用公历近似日期，实际应根据农历计算)
+        // 2024年春节是2月10日，2025年春节是1月29日
+        { id: 'spring-festival', name: '春节', month: 2, day: 10, year: 2024 },
+        { id: 'spring-festival-next', name: '春节', month: 1, day: 29, year: 2025 },
+        
+        // 清明节 (4月4日或5日)
+        { id: 'qingming', name: '清明节', month: 4, day: 4, year: currentYear },
+        { id: 'qingming-next', name: '清明节', month: 4, day: 4, year: nextYear },
+        
+        // 劳动节
+        { id: 'labor-day', name: '劳动节', month: 5, day: 1, year: currentYear },
+        { id: 'labor-day-next', name: '劳动节', month: 5, day: 1, year: nextYear },
+        
+        // 端午节 (农历五月初五，这里使用公历近似日期)
+        // 2024年端午节是6月10日，2025年端午节是5月31日
+        { id: 'dragon-boat', name: '端午节', month: 6, day: 10, year: 2024 },
+        { id: 'dragon-boat-next', name: '端午节', month: 5, day: 31, year: 2025 },
+        
+        // 中秋节 (农历八月十五，这里使用公历近似日期)
+        // 2024年中秋节是9月17日，2025年中秋节是10月6日
+        { id: 'mid-autumn', name: '中秋节', month: 9, day: 17, year: 2024 },
+        { id: 'mid-autumn-next', name: '中秋节', month: 10, day: 6, year: 2025 },
+        
+        // 国庆节
+        { id: 'national-day', name: '国庆节', month: 10, day: 1, year: currentYear },
+        { id: 'national-day-next', name: '国庆节', month: 10, day: 1, year: nextYear }
+    ];
+    
+    holidays.forEach(holiday => {
+        const dateKey = `${holiday.month}-${holiday.day}-${holiday.year}`;
+        
+        // 避免重复添加
+        if (!addedDates.has(dateKey)) {
+            const date = new Date(holiday.year, holiday.month - 1, holiday.day);
+            events.push({
+                id: `holiday-${holiday.id}-${holiday.year}`,
+                name: holiday.name,
+                type: 'preset',
+                category: 'holiday',
+                date: date,
+                repeat: 'yearly'
+            });
+            addedDates.add(dateKey);
+        }
+    });
+    
+    // 添加自定义节假日
+    for (const dateStr in holidays) {
+        if (holidays[dateStr]) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const dateKey = `${month}-${day}-${year}`;
+            
+            // 避免重复添加
+            if (!addedDates.has(dateKey)) {
+                events.push({
+                    id: `custom-holiday-${dateStr}`,
+                    name: '自定义假日',
+                    type: 'preset',
+                    category: 'custom-holiday',
+                    date: new Date(year, month - 1, day),
+                    repeat: 'none'
+                });
+                addedDates.add(dateKey);
+            }
+        }
+    }
+}
+
+// 添加自定义事件
+function addCustomEvent() {
+    const eventName = document.getElementById('event-name').value.trim();
+    const eventTime = document.getElementById('event-time').value;
+    const eventRepeat = document.getElementById('event-repeat').value;
+    
+    if (!eventName || !eventTime) {
+        alert('请填写事件名称和时间！');
+        return;
+    }
+    
+    const date = new Date(eventTime);
+    const id = 'custom-' + Date.now();
+    
+    events.push({
+        id: id,
+        name: eventName,
+        type: 'custom',
+        category: 'custom',
+        date: date,
+        repeat: eventRepeat
+    });
+    
+    // 保存到本地存储
+    saveEventsToLocalStorage();
+    
+    // 清空输入框
+    document.getElementById('event-name').value = '';
+    document.getElementById('event-time').value = '';
+    
+    // 重新渲染事件
+    renderEvents();
+}
+
+// 删除自定义事件
+function deleteCustomEvent(id) {
+    events = events.filter(event => event.id !== id);
+    saveEventsToLocalStorage();
+    renderEvents();
+}
+
+// 渲染所有事件
+function renderEvents() {
+    // 计算每个事件的下一次发生时间和剩余时间
+    const eventsWithNextOccurrence = events.map(event => {
+        const nextOccurrence = getNextOccurrence(event);
+        const timeRemaining = getTimeRemaining(nextOccurrence, event);
+        
+        return {
+            ...event,
+            nextOccurrence,
+            timeRemaining
+        };
+    });
+    
+    // 按剩余时间排序
+    const sortedEvents = eventsWithNextOccurrence.sort((a, b) => 
+        a.nextOccurrence.getTime() - b.nextOccurrence.getTime()
+    );
+    
+    // 渲染主要倒计时
+    renderMainCountdowns(sortedEvents);
+    
+    // 渲染其他假期
+    renderOtherHolidays(sortedEvents);
+    
+    // 渲染自定义事件列表
+    renderCustomEventsList(sortedEvents.filter(event => event.type === 'custom'));
+}
+
+// 渲染主要倒计时
+function renderMainCountdowns(sortedEvents) {
+    // 获取主要倒计时元素
+    const workdayEndCard = document.getElementById('workday-end-card');
+    const weekendCard = document.getElementById('weekend-card');
+    const salaryDayCard = document.getElementById('salary-day-card');
+    const nextHolidayCard = document.getElementById('next-holiday-card');
+    
+    // 找到下班时间事件
+    const workdayEndEvent = sortedEvents.find(e => e.id === 'workday-end');
+    if (workdayEndEvent) {
+        document.getElementById('time-workday-end').textContent = formatTimeRemaining(workdayEndEvent.timeRemaining, 'seconds');
+        document.getElementById('date-workday-end').textContent = formatDate(workdayEndEvent.nextOccurrence);
+    }
+    
+    // 找到周末事件
+    const weekendEvent = sortedEvents.find(e => e.id === 'weekend');
+    if (weekendEvent) {
+        document.getElementById('time-weekend').textContent = formatTimeRemaining(weekendEvent.timeRemaining, 'hours');
+        document.getElementById('date-weekend').textContent = formatDate(weekendEvent.nextOccurrence);
+    }
+    
+    // 找到发薪日事件
+    const salaryDayEvent = sortedEvents.find(e => e.id === 'salary-day');
+    if (salaryDayEvent) {
+        document.getElementById('time-salary-day').textContent = formatTimeRemaining(salaryDayEvent.timeRemaining, 'days');
+        document.getElementById('date-salary-day').textContent = formatDate(salaryDayEvent.nextOccurrence);
+    }
+    
+    // 确定期待时间（午饭或最近的假期）
+    const now = new Date();
+    const lunchEvent = sortedEvents.find(e => e.id === 'lunch-time');
+    let expectationEvent;
+    
+    // 如果现在是上午且还没到午饭时间，显示午饭时间
+    if (lunchEvent && 
+        (now.getHours() < 11 || (now.getHours() === 11 && now.getMinutes() < 30)) && 
+        now.getDay() >= 1 && now.getDay() <= 5) { // 工作日
+        expectationEvent = lunchEvent;
+    } else {
+        // 否则显示最近的假期
+        expectationEvent = sortedEvents.find(e => 
+            (e.category === 'holiday' || e.category === 'custom-holiday') && 
+            e.id !== 'workday-end' && e.id !== 'weekend' && e.id !== 'salary-day'
+        );
+    }
+    
+    // 渲染期待时间
+    if (expectationEvent) {
+        document.getElementById('time-next-holiday').textContent = 
+            expectationEvent.id === 'lunch-time' 
+                ? formatTimeRemaining(expectationEvent.timeRemaining, 'seconds')
+                : formatTimeRemaining(expectationEvent.timeRemaining, 'days');
+        document.getElementById('date-next-holiday').textContent = formatDate(expectationEvent.nextOccurrence);
+    }
+}
+
+// 渲染其他假期
+function renderOtherHolidays(sortedEvents) {
+    const container = document.querySelector('.other-holidays');
+    container.innerHTML = '';
+    
+    // 获取已经在主要倒计时中显示的事件ID
+    const mainEventIds = ['workday-end', 'weekend', 'salary-day'];
+    const expectationEvent = document.getElementById('time-next-holiday').textContent !== '--' 
+        ? sortedEvents.find(e => 
+            formatTimeRemaining(e.timeRemaining, e.id === 'lunch-time' ? 'seconds' : 'days') === 
+            document.getElementById('time-next-holiday').textContent)
+        : null;
+    
+    if (expectationEvent) {
+        mainEventIds.push(expectationEvent.id);
+    }
+    
+    // 筛选出其他假期（不在主要倒计时中显示的假期）
+    const otherHolidays = sortedEvents.filter(event => 
+        (event.category === 'holiday' || event.category === 'custom-holiday') && 
+        !mainEventIds.includes(event.id)
+    );
+    
+    // 渲染其他假期
+    otherHolidays.forEach(event => {
+        const card = document.createElement('div');
+        card.className = 'countdown-card';
+        
+        card.innerHTML = `
+            <h3>${event.name}</h3>
+            <div class="countdown-time">${formatTimeRemaining(event.timeRemaining, 'days')}</div>
+            <div class="countdown-date">${formatDate(event.nextOccurrence)}</div>
+        `;
+        
+        container.appendChild(card);
+    });
+}
+
+// 渲染自定义事件列表
+function renderCustomEventsList(customEvents) {
+    const container = document.querySelector('.custom-events-list');
+    container.innerHTML = '';
+    
+    customEvents.forEach(event => {
+        const item = document.createElement('div');
+        item.className = 'custom-event-item';
+        
+        item.innerHTML = `
+            <div class="event-info">
+                <div class="event-name">${event.name}</div>
+                <div class="event-time">${formatDate(event.nextOccurrence)} (${event.repeat === 'none' ? '不重复' : getRepeatText(event.repeat)})</div>
+            </div>
+            <div class="event-actions">
+                <button class="delete-btn" data-id="${event.id}">删除</button>
+            </div>
+        `;
+        
+        container.appendChild(item);
+        
+        // 添加删除按钮事件
+        item.querySelector('.delete-btn').addEventListener('click', function() {
+            deleteCustomEvent(this.getAttribute('data-id'));
+        });
+    });
+}
+
+// 更新所有倒计时
+function updateCountdowns() {
+    // 重新计算每个事件的下一次发生时间和剩余时间
+    const eventsWithNextOccurrence = events.map(event => {
+        const nextOccurrence = getNextOccurrence(event);
+        const timeRemaining = getTimeRemaining(nextOccurrence, event);
+        
+        return {
+            ...event,
+            nextOccurrence,
+            timeRemaining
+        };
+    });
+    
+    // 按剩余时间排序
+    const sortedEvents = eventsWithNextOccurrence.sort((a, b) => 
+        a.nextOccurrence.getTime() - b.nextOccurrence.getTime()
+    );
+    
+    // 更新主要倒计时
+    renderMainCountdowns(sortedEvents);
+}
+
+// 获取事件的下一次发生时间
+function getNextOccurrence(event) {
+    const now = new Date();
+    let nextDate;
+    
+    switch (event.repeat) {
+        case 'none':
+            // 不重复的事件
+            return event.date;
+            
+        case 'daily':
+            // 每天重复的事件
+            nextDate = new Date(now);
+            nextDate.setHours(parseInt(event.time.split(':')[0]));
+            nextDate.setMinutes(parseInt(event.time.split(':')[1]));
+            nextDate.setSeconds(0);
+            
+            // 如果今天的时间已经过了，设置为明天
+            if (nextDate <= now) {
+                nextDate.setDate(nextDate.getDate() + 1);
+            }
+            return nextDate;
+            
+        case 'workdays':
+            // 工作日重复的事件
+            nextDate = new Date(now);
+            nextDate.setHours(parseInt(event.time.split(':')[0]));
+            nextDate.setMinutes(parseInt(event.time.split(':')[1]));
+            nextDate.setSeconds(0);
+            
+            // 如果今天的时间已经过了，或者今天是周末，找下一个工作日
+            const dayOfWeek = nextDate.getDay(); // 0是周日，6是周六
+            if (nextDate <= now || dayOfWeek === 0 || dayOfWeek === 6) {
+                // 找到下一个工作日
+                do {
+                    nextDate.setDate(nextDate.getDate() + 1);
+                } while (nextDate.getDay() === 0 || nextDate.getDay() === 6);
+            }
+            return nextDate;
+            
+        case 'weekly':
+            // 每周重复的事件
+            nextDate = new Date(now);
+            const targetDay = event.dayOfWeek; // 0是周日，6是周六
+            const currentDay = now.getDay();
+            
+            // 计算到下一个目标日期的天数
+            let daysUntilTarget = targetDay - currentDay;
+            if (daysUntilTarget <= 0) {
+                daysUntilTarget += 7; // 如果目标日已过，等到下周
+            }
+            
+            nextDate.setDate(nextDate.getDate() + daysUntilTarget);
+            
+            // 如果有指定时间
+            if (event.time) {
+                nextDate.setHours(parseInt(event.time.split(':')[0]));
+                nextDate.setMinutes(parseInt(event.time.split(':')[1]));
+            } else {
+                nextDate.setHours(0);
+                nextDate.setMinutes(0);
+            }
+            nextDate.setSeconds(0);
+            
+            return nextDate;
+            
+        case 'monthly':
+            // 每月重复的事件
+            nextDate = new Date(now.getFullYear(), now.getMonth(), event.day);
+            
+            // 如果本月的日期已过，设置为下个月
+            if (nextDate <= now) {
+                nextDate = new Date(now.getFullYear(), now.getMonth() + 1, event.day);
+            }
+            
+            // 如果有指定时间
+            if (event.time) {
+                nextDate.setHours(parseInt(event.time.split(':')[0]));
+                nextDate.setMinutes(parseInt(event.time.split(':')[1]));
+            } else {
+                nextDate.setHours(0);
+                nextDate.setMinutes(0);
+            }
+            nextDate.setSeconds(0);
+            
+            return nextDate;
+            
+        case 'yearly':
+            // 每年重复的事件
+            if (event.date) {
+                // 如果有完整日期
+                const month = event.date.getMonth();
+                const day = event.date.getDate();
+                
+                nextDate = new Date(now.getFullYear(), month, day);
+                
+                // 如果今年的日期已过，设置为明年
+                if (nextDate <= now) {
+                    nextDate = new Date(now.getFullYear() + 1, month, day);
+                }
+                
+                return nextDate;
+            } else if (event.month && event.day) {
+                // 如果有月和日
+                nextDate = new Date(now.getFullYear(), event.month - 1, event.day);
+                
+                // 如果今年的日期已过，设置为明年
+                if (nextDate <= now) {
+                    nextDate = new Date(now.getFullYear() + 1, event.month - 1, event.day);
+                }
+                
+                return nextDate;
+            }
+            break;
+            
+        default:
+            // 默认返回事件日期
+            return event.date || now;
+    }
+}
+
+// 计算剩余时间
+function getTimeRemaining(targetDate, event) {
+    const now = new Date();
+    let difference = targetDate.getTime() - now.getTime();
+    
+    // 如果目标日期已过，返回0
+    if (difference < 0) {
+        return {
+            total: 0,
+            days: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0
+        };
+    }
+    
+    // 如果是工作日事件（下班、午饭），计算工作时间
+    if (event && (event.id === 'workday-end' || event.id === 'lunch-time')) {
+        // 获取工作开始和结束时间
+        const [startHour, startMinute] = workStartTime.split(':').map(Number);
+        const [endHour, endMinute] = workEndTime.split(':').map(Number);
+        
+        // 计算当前时间
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        
+        // 如果当前时间在工作开始时间之前
+        if (currentHour < startHour || (currentHour === startHour && currentMinute < startMinute)) {
+            // 返回全天工作时间
+            const workTotalMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+            return {
+                total: workTotalMinutes * 60 * 1000,
+                days: 0,
+                hours: Math.floor(workTotalMinutes / 60),
+                minutes: workTotalMinutes % 60,
+                seconds: 0,
+                isWorkTime: true
+            };
+        }
+    }
+    
+    // 计算天、小时、分钟和秒
+    return {
+        total: difference,
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((difference % (1000 * 60)) / 1000)
+    };
+}
+
+// 格式化剩余时间显示
+function formatTimeRemaining(timeRemaining, precision = 'auto') {
+    if (timeRemaining.total === 0) {
+        return '已到时间！';
+    }
+    
+    // 根据精度格式化
+    switch (precision) {
+        case 'seconds':
+            // 精确到秒
+            return `${padZero(timeRemaining.hours)}:${padZero(timeRemaining.minutes)}:${padZero(timeRemaining.seconds)}`;
+            
+        case 'minutes':
+            // 精确到分钟
+            if (timeRemaining.days > 0) {
+                return `${timeRemaining.days}天 ${padZero(timeRemaining.hours)}:${padZero(timeRemaining.minutes)}`;
+            } else {
+                return `${padZero(timeRemaining.hours)}:${padZero(timeRemaining.minutes)}`;
+            }
+            
+        case 'hours':
+            // 精确到小时
+            if (timeRemaining.days > 0) {
+                return `${timeRemaining.days}天 ${timeRemaining.hours}小时`;
+            } else {
+                return `${timeRemaining.hours}小时 ${timeRemaining.minutes}分钟`;
+            }
+            
+        case 'days':
+            // 精确到天
+            return `${timeRemaining.days}天`;
+            
+        case 'auto':
+        default:
+            // 自动判断精度
+            if (timeRemaining.days > 0) {
+                return `${timeRemaining.days}天 ${timeRemaining.hours}小时`;
+            } else if (timeRemaining.hours > 0) {
+                return `${timeRemaining.hours}小时 ${timeRemaining.minutes}分钟`;
+            } else {
+                return `${timeRemaining.minutes}分钟 ${timeRemaining.seconds}秒`;
+            }
+    }
+}
+
+// 格式化日期显示
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()];
+    
+    return `${year}年${month}月${day}日 ${weekday} ${padZero(hours)}:${padZero(minutes)}`;
+}
+
+// 数字补零
+function padZero(num) {
+    return num < 10 ? `0${num}` : num;
+}
+
+// 获取重复类型文本
+function getRepeatText(repeat) {
+    switch (repeat) {
+        case 'daily': return '每天';
+        case 'workdays': return '工作日';
+        case 'weekly': return '每周';
+        case 'monthly': return '每月';
+        case 'yearly': return '每年';
+        default: return '';
+    }
+}
+
+// 初始化标签页
+function initTabs() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const footerTabs = document.querySelectorAll('.footer-tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    // 标签按钮点击事件
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabId = btn.getAttribute('data-tab');
+            setActiveTab(tabId);
+        });
+    });
+    
+    // 底部标签点击事件
+    footerTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabId = tab.getAttribute('data-tab');
+            setActiveTab(tabId);
+        });
+    });
+    
+    // 设置活动标签
+    function setActiveTab(tabId) {
+        activeTab = tabId;
+        
+        // 更新标签按钮状态
+        tabBtns.forEach(btn => {
+            if (btn.getAttribute('data-tab') === tabId) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // 更新底部标签状态
+        footerTabs.forEach(tab => {
+            if (tab.getAttribute('data-tab') === tabId) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+        
+        // 更新内容区域
+        tabContents.forEach(content => {
+            if (content.getAttribute('id') === tabId) {
+                content.classList.add('active');
+            } else {
+                content.classList.remove('active');
+            }
+        });
+        
+        // 如果切换到日历标签，初始化日历
+        if (tabId === 'calendar') {
+            initCalendar();
+        }
+    }
+}
+
+// 初始化日历
+function initCalendar() {
+    // 如果日历已经初始化，则不重复初始化
+    if (document.getElementById('calendar').dataset.initialized === 'true') {
+        return;
+    }
+    
+    const today = new Date();
+    let currentMonth = today.getMonth();
+    let currentYear = today.getFullYear();
+    
+    // 渲染日历
+    renderCalendar(currentMonth, currentYear);
+    
+    // 上个月按钮
+    document.getElementById('prev-month').addEventListener('click', () => {
+        currentMonth--;
+        if (currentMonth < 0) {
+            currentMonth = 11;
+            currentYear--;
+        }
+        renderCalendar(currentMonth, currentYear);
+    });
+    
+    // 下个月按钮
+    document.getElementById('next-month').addEventListener('click', () => {
+        currentMonth++;
+        if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+        }
+        renderCalendar(currentMonth, currentYear);
+    });
+    
+    // 标记日历已初始化
+    document.getElementById('calendar').dataset.initialized = 'true';
+}
+
+// 渲染日历
+function renderCalendar(month, year) {
+    const calendarDays = document.querySelector('.calendar-days');
+    const monthYearText = document.getElementById('current-month');
+    
+    // 月份名称
+    const monthNames = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+    
+    // 设置月份和年份标题
+    monthYearText.textContent = `${year}年${monthNames[month]}`;
+    
+    // 清空日历
+    calendarDays.innerHTML = '';
+    
+    // 获取当月第一天
+    const firstDay = new Date(year, month, 1);
+    
+    // 获取当月天数
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // 获取第一天是星期几（0是星期日，6是星期六）
+    let firstDayOfWeek = firstDay.getDay();
+    // 修正：将周一设为0，周日为6
+    firstDayOfWeek = (firstDayOfWeek + 6) % 7;
+    // 添加空白格子
+    for (let i = 0; i < firstDayOfWeek; i++) {
+        const emptyDay = document.createElement('div');
+        emptyDay.className = 'calendar-day empty';
+        calendarDays.appendChild(emptyDay);
+    }
+    // 添加日期
+    const today = new Date();
+    for (let i = 1; i <= daysInMonth; i++) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        dayElement.textContent = i;
+        // 检查是否是今天
+        if (year === today.getFullYear() && month === today.getMonth() && i === today.getDate()) {
+            dayElement.classList.add('today');
+        }
+        // 检查是否是周末
+        const dayOfWeek = new Date(year, month, i).getDay();
+        // 修正：周六(6)和周日(0)为周末
+        if (dayOfWeek === 6 || dayOfWeek === 0) {
+            dayElement.classList.add('weekend');
+        } else {
+            dayElement.classList.add('workday');
+        }
+        // 检查是否是假日
+        const dateStr = `${year}-${month + 1}-${i}`;
+        if (holidays[dateStr]) {
+            dayElement.classList.remove('workday');
+            dayElement.classList.add('holiday');
+        }
+        // 点击事件 - 切换假日状态
+        dayElement.addEventListener('click', () => {
+            // 如果是周末，不允许修改
+            if (dayOfWeek === 6 || dayOfWeek === 0) return;
+            // 切换假日状态
+            if (dayElement.classList.contains('holiday')) {
+                dayElement.classList.remove('holiday');
+                dayElement.classList.add('workday');
+                delete holidays[dateStr];
+            } else {
+                dayElement.classList.remove('workday');
+                dayElement.classList.add('holiday');
+                holidays[dateStr] = true;
+            }
+            // 保存到本地存储
+            localStorage.setItem('holidays', JSON.stringify(holidays));
+            // 重新加载事件
+            addDefaultEvents();
+            renderEvents();
+        });
+        calendarDays.appendChild(dayElement);
+    }
+}

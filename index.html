@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作摸鱼神器</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>工作摸鱼神器</h1>
+            <p class="subtitle">距离下一个快乐时刻还有...</p>
+        </header>
+        
+        <div id="setup-modal" class="modal">
+            <div class="modal-content">
+                <h2>首次设置</h2>
+                <p>请设置您的上下班时间</p>
+                <div class="form-group">
+                    <label for="work-start-time">上班时间:</label>
+                    <input type="time" id="work-start-time" value="09:00">
+                </div>
+                <div class="form-group">
+                    <label for="work-end-time">下班时间:</label>
+                    <input type="time" id="work-end-time" value="17:30">
+                </div>
+                <button id="save-work-time">保存</button>
+            </div>
+        </div>
+        
+        <main>
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="countdown">倒计时</button>
+                <button class="tab-btn" data-tab="calendar">日历</button>
+                <button class="tab-btn" data-tab="settings">设置</button>
+            </div>
+            
+            <div id="countdown" class="tab-content active">
+                <div class="main-countdown">
+                    <div class="countdown-row">
+                        <div class="countdown-card main-card" id="workday-end-card">
+                            <h3>下班倒计时</h3>
+                            <div class="countdown-time" id="time-workday-end">--:--:--</div>
+                            <div class="countdown-date" id="date-workday-end">--</div>
+                        </div>
+                        
+                        <div class="countdown-card main-card" id="weekend-card">
+                            <h3>周末倒计时</h3>
+                            <div class="countdown-time" id="time-weekend">--:--</div>
+                            <div class="countdown-date" id="date-weekend">--</div>
+                        </div>
+                    </div>
+                    
+                    <div class="countdown-row">
+                        <div class="countdown-card main-card" id="salary-day-card">
+                            <h3>发薪倒计时</h3>
+                            <div class="countdown-time" id="time-salary-day">--天</div>
+                            <div class="countdown-date" id="date-salary-day">--</div>
+                        </div>
+                        
+                        <div class="countdown-card main-card" id="next-holiday-card">
+                            <h3>期待时间</h3>
+                            <div class="countdown-time" id="time-next-holiday">--</div>
+                            <div class="countdown-date" id="date-next-holiday">--</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h2>其他假期</h2>
+                <div class="other-holidays">
+                    <!-- 其他假期倒计时将通过JS动态生成 -->
+                </div>
+            </div>
+            
+            <div id="calendar" class="tab-content">
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <button id="prev-month">◀</button>
+                        <h2 id="current-month">2024年5月</h2>
+                        <button id="next-month">▶</button>
+                    </div>
+                    <div class="weekdays">
+                        <div>日</div>
+                        <div>一</div>
+                        <div>二</div>
+                        <div>三</div>
+                        <div>四</div>
+                        <div>五</div>
+                        <div>六</div>
+                    </div>
+                    <div class="calendar-days">
+                        <!-- 日历天数将通过JS动态生成 -->
+                    </div>
+                    <div class="calendar-legend">
+                        <div><span class="legend-color workday"></span> 工作日</div>
+                        <div><span class="legend-color weekend"></span> 周末</div>
+                        <div><span class="legend-color holiday"></span> 节假日</div>
+                        <div><span class="legend-color custom-holiday"></span> 自定义假期</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="settings" class="tab-content">
+                <div class="settings-section">
+                    <h2>工作时间设置</h2>
+                    <div class="form-group">
+                        <label for="settings-work-start-time">上班时间:</label>
+                        <input type="time" id="settings-work-start-time">
+                    </div>
+                    <div class="form-group">
+                        <label for="settings-work-end-time">下班时间:</label>
+                        <input type="time" id="settings-work-end-time">
+                    </div>
+                    <button id="update-work-time">更新</button>
+                </div>
+                
+                <div class="custom-events">
+                <h2>自定义事件</h2>
+                <div class="form-group">
+                    <input type="text" id="event-name" placeholder="事件名称">
+                    <input type="datetime-local" id="event-time">
+                    <select id="event-repeat">
+                        <option value="none">不重复</option>
+                        <option value="daily">每天</option>
+                        <option value="weekly">每周</option>
+                        <option value="monthly">每月</option>
+                        <option value="yearly">每年</option>
+                    </select>
+                    <button id="add-event">添加</button>
+                </div>
+                <div class="custom-events-list">
+                    <!-- 自定义事件列表将通过JS动态生成 -->
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <div class="footer-tabs">
+                <div class="footer-tab active" data-tab="countdown">倒计时</div>
+                <div class="footer-tab" data-tab="calendar">日历</div>
+                <div class="footer-tab" data-tab="settings">设置</div>
+            </div>
+            <p>数据保存在本地浏览器中 | 摸鱼愉快 😎</p>
+        </footer>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
