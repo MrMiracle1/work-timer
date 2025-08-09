@@ -14,7 +14,7 @@
                     <h1>工作摸鱼神器</h1>
                     <p class="subtitle">距离下一个快乐时刻还有...</p>
                 </div>
-                <div id="current-time" class="current-time"></div>
+                <div class="current-time-container">当前时间: <div id="current-time" class="current-time"></div></div>
             </div>
         </header>
         
@@ -100,7 +100,8 @@
                     <div class="calendar-legend">
                         <div><span class="legend-color workday"></span> 工作日</div>
                         <div><span class="legend-color weekend"></span> 周末</div>
-                        <div><span class="legend-color holiday"></span> 节假日</div>
+                        <div><span class="legend-color workday-off"></span> 公休假期</div>
+                        <div><span class="legend-color weekend-work"></span> 串休上班日</div>
                         <div><span class="legend-color custom-holiday"></span> 自定义假期</div>
                     </div>
                 </div>
@@ -163,5 +164,38 @@
     </div>
     
     <script src="script.js"></script>
-</body>
+<!-- 存钱罐组件 -->
+    <div id="piggy-bank-container">
+        <div id="piggy-bank">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <!-- 存钱罐身体 - 改进版 -->
+                <!-- 主体 -->
+                <ellipse cx="100" cy="100" rx="65" ry="75" fill="#f39c12" stroke="#d35400" stroke-width="2"/>
+                <!-- 高光效果 -->
+                <ellipse cx="90" cy="85" rx="25" ry="20" fill="rgba(255,255,255,0.3)"/>
+                <!-- 存钱罐顶部入口 -->
+                <rect x="75" y="35" width="50" height="25" rx="5" fill="#e67e22"/>
+                <rect x="80" y="35" width="40" height="5" rx="2" fill="#d35400"/>
+                <!-- 存钱罐耳朵 -->
+                <ellipse cx="65" cy="60" rx="15" ry="20" fill="#f39c12" stroke="#d35400" stroke-width="2"/>
+                <ellipse cx="135" cy="60" rx="15" ry="20" fill="#f39c12" stroke="#d35400" stroke-width="2"/>
+                <!-- 存钱罐眼睛 -->
+                <circle cx="85" cy="85" r="10" fill="white"/>
+                <circle cx="115" cy="85" r="10" fill="white"/>
+                <circle cx="85" cy="85" r="6" fill="#34495e"/>
+                <circle cx="115" cy="85" r="6" fill="#34495e"/>
+                <circle cx="88" cy="82" r="3" fill="white"/>
+                <circle cx="118" cy="82" r="3" fill="white"/>
+                <!-- 存钱罐微笑 -->
+                <path d="M80,115 Q100,135 120,115" fill="none" stroke="#34495e" stroke-width="3" stroke-linecap="round"/>
+                <!-- 存钱罐内的钱 -->
+                <g id="money-inside">
+                    <!-- 钱的图形会通过JavaScript动态生成 -->
+                </g>
+            </svg>
+            <div id="piggy-bank-progress-text" class="piggy-bank-text"></div>
+        </div>
+    </div>
+
+    </body>
 </html>

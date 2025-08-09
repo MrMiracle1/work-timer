@@ -3,6 +3,8 @@ let events = [];
 let workStartTime = localStorage.getItem('workStartTime') || '09:00';
 let workEndTime = localStorage.getItem('workEndTime') || '17:30';
 let holidays = JSON.parse(localStorage.getItem('holidays')) || {};
+let workdaysOff = JSON.parse(localStorage.getItem('workdaysOff')) || {}; // 公休假期
+let weekendsWork = JSON.parse(localStorage.getItem('weekendsWork')) || {}; // 串休上班日
 let activeTab = 'countdown';
 // 开发者设置
 let developerMode = localStorage.getItem('developerMode') === 'true' || false;
@@ -23,13 +25,22 @@ function isWeekend(date) {
     return dayOfWeek === 0 || dayOfWeek === 6;
 }
 
-// 检查是否是假日
+// 检查是否是假日（公休假期）
 function isHoliday(date) {
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
     const day = date.getDate();
     const dateStr = `${year}-${month}-${day}`;
-    return holidays[dateStr] === true;
+    return workdaysOff[dateStr] === true;
+}
+
+// 检查是否是串休上班日
+function isWeekendWork(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const dateStr = `${year}-${month}-${day}`;
+    return weekendsWork[dateStr] === true;
 }
 
 // 获取当前时间（考虑开发者模式和自定义时间）
@@ -61,13 +72,16 @@ document.addEventListener('DOMContentLoaded', () => {
 function initApp() {
     // 从本地存储加载自定义事件
     loadEventsFromLocalStorage();
-    
+
     // 添加预设事件
     addDefaultEvents();
-    
+
     // 渲染所有事件
     renderEvents();
-    
+
+    // 初始化存钱罐
+    updatePiggyBank();
+
     // 设置定时器，每秒更新倒计时
     setInterval(updateCountdowns, 1000);
     
@@ -135,6 +149,12 @@ function showSetupModal() {
 }
 
 // 更新工作时间
+// 计算两个日期之间的天数
+function daysBetween(date1, date2) {
+    const oneDay = 24 * 60 * 60 * 1000; // 一天的毫秒数
+    return Math.round(Math.abs((date1 - date2) / oneDay));
+}
+
 function updateWorkTime() {
     const startTime = document.getElementById('settings-work-start-time').value;
     const endTime = document.getElementById('settings-work-end-time').value;
@@ -487,6 +507,16 @@ function renderMainCountdowns(sortedEvents) {
     
     // 渲染期待时间
     if (expectationEvent) {
+        // 设置标题
+        const nextHolidayTitle = document.querySelector('#next-holiday-card h3');
+        if (nextHolidayTitle) {
+            if (expectationEvent.id === 'lunch-time') {
+                nextHolidayTitle.textContent = '午休倒计时';
+            } else {
+                nextHolidayTitle.textContent = expectationEvent.name;
+            }
+        }
+        
         document.getElementById('time-next-holiday').textContent = 
             expectationEvent.id === 'lunch-time' 
                 ? formatTimeRemaining(expectationEvent.timeRemaining, 'seconds')
@@ -580,6 +610,9 @@ function updateCountdowns() {
     if (currentTimeElement) {
         currentTimeElement.textContent = `${padZero(now.getHours())}:${padZero(now.getMinutes())}:${padZero(now.getSeconds())}`;
     }
+
+    // 更新存钱罐
+    updatePiggyBank();
     
     // 重新计算每个事件的下一次发生时间和剩余时间
     const eventsWithNextOccurrence = events.map(event => {
@@ -632,13 +665,26 @@ function getNextOccurrence(event) {
             nextDate.setMinutes(parseInt(event.time.split(':')[1]));
             nextDate.setSeconds(0);
             
-            // 如果今天的时间已经过了，或者今天是周末/假日，找下一个工作日
-            const dayOfWeek = nextDate.getDay(); // 0是周日，6是周六
-            if (nextDate <= now || dayOfWeek === 0 || dayOfWeek === 6 || isHoliday(nextDate)) {
-                // 找到下一个工作日(非周末且非假日)
+            // 检查是否是有效的工作日（非周末、非假日，或者是串休上班日）
+            function isEffectiveWorkday(date) {
+                const dayOfWeek = date.getDay();
+                // 周末但串休上班
+                if ((dayOfWeek === 0 || dayOfWeek === 6) && isWeekendWork(date)) {
+                    return true;
+                }
+                // 工作日且不是公休假期
+                if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isHoliday(date)) {
+                    return true;
+                }
+                return false;
+            }
+            
+            // 如果今天的时间已经过了，或者今天不是有效工作日，找下一个有效工作日
+            if (nextDate <= now || !isEffectiveWorkday(nextDate)) {
+                // 找到下一个有效工作日
                 do {
                     nextDate.setDate(nextDate.getDate() + 1);
-                } while (nextDate.getDay() === 0 || nextDate.getDay() === 6 || isHoliday(nextDate));
+                } while (!isEffectiveWorkday(nextDate));
             }
             return nextDate;
             
@@ -985,6 +1031,66 @@ function initTabs() {
     }
 }
 
+// 更新存钱罐显示
+function updatePiggyBank() {
+    // 找到发薪日事件
+    const salaryDayEvent = events.find(e => e.id === 'salary-day');
+    if (!salaryDayEvent) return;
+
+    const now = getCurrentTime();
+    const nextSalaryDay = getNextOccurrence(salaryDayEvent);
+    const prevSalaryDay = new Date(nextSalaryDay);
+    prevSalaryDay.setMonth(prevSalaryDay.getMonth() - 1);
+
+    // 计算上一次发薪日到下一次发薪日的总天数
+    const totalDays = Math.ceil((nextSalaryDay - prevSalaryDay) / (1000 * 60 * 60 * 24));
+
+    // 计算当前到下一次发薪日的剩余天数
+    const remainingDays = Math.ceil((nextSalaryDay - now) / (1000 * 60 * 60 * 24));
+
+    // 计算进度百分比
+    // 根据用户需求，进度应该是1减去现在的值
+    const progressPercentage = Math.max(0, Math.min(100, ((totalDays - remainingDays) / totalDays) * 100));
+
+    // 更新显示
+    const progressText = document.getElementById('piggy-bank-progress-text');
+    if (progressText) {
+        progressText.textContent = `存钱进度: ${Math.round(progressPercentage)}%`;
+    }
+
+    // 更新存钱罐内的钱的显示
+    const moneyInside = document.getElementById('money-inside');
+    if (moneyInside) {
+        // 清空现有元素
+        while (moneyInside.firstChild) {
+            moneyInside.removeChild(moneyInside.firstChild);
+        }
+
+        // 根据进度添加钱的元素
+        const maxBills = 8; // 最多显示8张钱
+        const billCount = Math.floor(progressPercentage / (100 / maxBills));
+
+        for (let i = 0; i < billCount; i++) {
+            const bill = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            // 随机位置和旋转，使钱看起来更自然
+            const xOffset = Math.random() * 10 - 5;
+            const rotate = Math.random() * 6 - 3;
+            const yPos = 150 - i * 12;
+
+            bill.setAttribute('x', `${75 + xOffset}`);
+            bill.setAttribute('y', `${yPos}`);
+            bill.setAttribute('width', '50');
+            bill.setAttribute('height', '8');
+            bill.setAttribute('fill', i % 2 === 0 ? '#2ecc71' : '#3498db');
+            bill.setAttribute('opacity', '0.8');
+            bill.setAttribute('transform', `rotate(${rotate} ${75 + xOffset + 25} ${yPos + 4})`);
+            bill.setAttribute('rx', '2');
+
+            moneyInside.appendChild(bill);
+        }
+    }
+}
+
 // 显示彩色toast提示
 function showToast(message) {
     // 创建toast元素
@@ -1016,6 +1122,10 @@ function showToast(message) {
     }, 3000);
 }
 
+// 日历全局变量
+let currentMonth;
+let currentYear;
+
 // 初始化日历
 function initCalendar() {
     // 如果日历已经初始化，则不重复初始化
@@ -1024,8 +1134,8 @@ function initCalendar() {
     }
     
     const today = new Date();
-    let currentMonth = today.getMonth();
-    let currentYear = today.getFullYear();
+    currentMonth = today.getMonth();
+    currentYear = today.getFullYear();
     
     // 渲染日历
     renderCalendar(currentMonth, currentYear);
@@ -1093,35 +1203,58 @@ function renderCalendar(month, year) {
             dayElement.classList.add('today');
         }
         // 检查是否是周末
-        const dayOfWeek = new Date(year, month, i).getDay();
-        // 修正：周六(6)和周日(0)为周末
-        if (dayOfWeek === 6 || dayOfWeek === 0) {
-            dayElement.classList.add('weekend');
-        } else {
-            dayElement.classList.add('workday');
-        }
-        // 检查是否是假日
+        const currentDate = new Date(year, month, i);
+        const dayOfWeek = currentDate.getDay();
         const dateStr = `${year}-${month + 1}-${i}`;
-        if (holidays[dateStr]) {
-            dayElement.classList.remove('workday');
-            dayElement.classList.add('holiday');
-        }
-        // 点击事件 - 切换假日状态
-        dayElement.addEventListener('click', () => {
-            // 如果是周末，不允许修改
-            if (dayOfWeek === 6 || dayOfWeek === 0) return;
-            // 切换假日状态
-            if (dayElement.classList.contains('holiday')) {
-                dayElement.classList.remove('holiday');
-                dayElement.classList.add('workday');
-                delete holidays[dateStr];
-            } else {
-                dayElement.classList.remove('workday');
-                dayElement.classList.add('holiday');
-                holidays[dateStr] = true;
+        
+        // 初始化状态
+        if (dayOfWeek === 6 || dayOfWeek === 0) {
+            // 周末
+            dayElement.classList.add('weekend');
+            // 检查是否是串休上班日
+            if (weekendsWork[dateStr]) {
+                dayElement.classList.remove('weekend');
+                dayElement.classList.add('weekend-work');
             }
-            // 保存到本地存储
-            localStorage.setItem('holidays', JSON.stringify(holidays));
+        } else {
+            // 工作日
+            dayElement.classList.add('workday');
+            // 检查是否是公休假期
+            if (workdaysOff[dateStr]) {
+                dayElement.classList.remove('workday');
+                dayElement.classList.add('workday-off');
+            }
+        }
+        // 点击事件 - 切换假日/串休状态
+        dayElement.addEventListener('click', () => {
+            const dateStr = `${year}-${month + 1}-${i}`;
+            
+            if (dayOfWeek === 6 || dayOfWeek === 0) {
+                // 周末：在正常周末和串休上班日之间切换
+                if (dayElement.classList.contains('weekend-work')) {
+                    dayElement.classList.remove('weekend-work');
+                    dayElement.classList.add('weekend');
+                    delete weekendsWork[dateStr];
+                } else {
+                    dayElement.classList.remove('weekend');
+                    dayElement.classList.add('weekend-work');
+                    weekendsWork[dateStr] = true;
+                }
+                localStorage.setItem('weekendsWork', JSON.stringify(weekendsWork));
+            } else {
+                // 工作日：在正常工作日和公休假期之间切换
+                if (dayElement.classList.contains('workday-off')) {
+                    dayElement.classList.remove('workday-off');
+                    dayElement.classList.add('workday');
+                    delete workdaysOff[dateStr];
+                } else {
+                    dayElement.classList.remove('workday');
+                    dayElement.classList.add('workday-off');
+                    workdaysOff[dateStr] = true;
+                }
+                localStorage.setItem('workdaysOff', JSON.stringify(workdaysOff));
+            }
+            
             // 重新加载事件
             addDefaultEvents();
             renderEvents();

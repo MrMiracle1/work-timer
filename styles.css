@@ -40,16 +40,61 @@ header h1 {
     margin-bottom: 10px;
 }
 
-.current-time {
+.current-time-container {
     font-size: 0.9rem;
     color: #7f8c8d;
     text-align: right;
     white-space: nowrap;
 }
 
+.current-time {
+    font-size: 0.9rem;
+    color: #3498db;
+    font-weight: bold;
+}
+
 .subtitle {
     font-size: 1.2rem;
     color: #7f8c8d;
+}
+
+/* 存钱罐样式 */
+#piggy-bank-container {
+    position: fixed;
+    bottom: 200px;
+    right: 100px;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.85);
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+#piggy-bank {
+    width: 200px;
+    height: 200px;
+    transition: transform 0.3s ease;
+}
+
+#piggy-bank:hover {
+    transform: scale(1.1) rotate(3deg);
+}
+
+.piggy-bank-text {
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-top: 10px;
+    padding: 5px 10px;
+    background-color: rgba(241, 196, 15, 0.2);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.piggy-bank-text:hover {
+    background-color: rgba(241, 196, 15, 0.4);
 }
 
 /* 主要内容区域 */
@@ -164,18 +209,18 @@ main {
 }
 
 .calendar-header button {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%) translateY(-100px);
-    padding: 12px 24px;
-    border-radius: 30px;
-    color: white;
-    font-weight: bold;
-    z-index: 1000;
-    transition: transform 0.3s ease, opacity 0.3s ease;
-    opacity: 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #3498db;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.calendar-header button:hover {
+    background-color: #f0f0f0;
 }
 
 .toast.show {
@@ -233,6 +278,16 @@ button {
     color: #e74c3c;
 }
 
+.calendar-day.workday-off {
+    background-color: #f8d7da;
+    color: #e74c3c;
+}
+
+.calendar-day.weekend-work {
+    background-color: #ffecb3;
+    color: #ff9800;
+}
+
 .calendar-day.custom-holiday {
     background-color: #d4edda;
     color: #28a745;
@@ -271,8 +326,12 @@ button {
     background-color: #d6eaf8;
 }
 
-.legend-color.holiday {
+.legend-color.workday-off {
     background-color: #f8d7da;
+}
+
+.legend-color.weekend-work {
+    background-color: #ffecb3;
 }
 
 .legend-color.custom-holiday {
