@@ -23,16 +23,28 @@ body {
 
 /* 头部样式 */
 header {
-    text-align: center;
     margin-bottom: 30px;
     padding: 20px 0;
     border-bottom: 1px solid #eaeaea;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 header h1 {
     font-size: 2.5rem;
     color: #3498db;
     margin-bottom: 10px;
+}
+
+.current-time {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    text-align: right;
+    white-space: nowrap;
 }
 
 .subtitle {
@@ -152,6 +164,26 @@ main {
 }
 
 .calendar-header button {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    padding: 12px 24px;
+    border-radius: 30px;
+    color: white;
+    font-weight: bold;
+    z-index: 1000;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+button {
     background: none;
     border: none;
     font-size: 1.2rem;
@@ -372,6 +404,27 @@ footer {
 
 .footer-tabs {
     display: none;
+}
+
+/* Toast提示样式 */
+.toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    padding: 12px 24px;
+    border-radius: 30px;
+    color: white;
+    font-weight: bold;
+    z-index: 1000;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
 }
 
 /* 模态框样式 */

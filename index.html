@@ -9,8 +9,13 @@
 <body>
     <div class="container">
         <header>
-            <h1>工作摸鱼神器</h1>
-            <p class="subtitle">距离下一个快乐时刻还有...</p>
+            <div class="header-content">
+                <div>
+                    <h1>工作摸鱼神器</h1>
+                    <p class="subtitle">距离下一个快乐时刻还有...</p>
+                </div>
+                <div id="current-time" class="current-time"></div>
+            </div>
         </header>
         
         <div id="setup-modal" class="modal">
@@ -46,7 +51,7 @@
                         </div>
                         
                         <div class="countdown-card main-card" id="weekend-card">
-                            <h3>周末倒计时</h3>
+                            <h3>本周剩余工作时间</h3>
                             <div class="countdown-time" id="time-weekend">--:--</div>
                             <div class="countdown-date" id="date-weekend">--</div>
                         </div>
@@ -113,6 +118,18 @@
                         <input type="time" id="settings-work-end-time">
                     </div>
                     <button id="update-work-time">更新</button>
+                </div>
+
+                <div class="settings-section developer-settings">
+                    <h2>开发者设置</h2>
+                    <div class="form-group">
+                        <label for="developer-mode">开启自定义时间:</label>
+                        <input type="checkbox" id="developer-mode">
+                    </div>
+                    <div class="form-group" id="custom-time-container" style="display: none;">
+                        <label for="custom-time">自定义时间:</label>
+                        <input type="datetime-local" id="custom-time">
+                    </div>
                 </div>
                 
                 <div class="custom-events">
