@@ -304,14 +304,18 @@ button:hover {
     top: 20px;
     left: 50%;
     transform: translateX(-50%) translateY(-100%);
-    padding: 12px 24px;
+    padding: 14px 28px;
     border-radius: 8px;
-    color: white;
+    color: #fff;
+    font-size: 18px;
     font-weight: bold;
     z-index: 1000;
     opacity: 0;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    background: rgba(52, 152, 219, 0.95); /* 更深的主色背景，提升对比度 */
+    letter-spacing: 1px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
 
 .toast.show {
@@ -343,12 +347,19 @@ button:hover {
         display: none;
     }
 
+    /* 修改这里：让倒计时每行显示两个卡片 */
     .countdown-row {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 10px;
     }
 
     .countdown-card {
         margin-bottom: 10px;
+        min-width: 0;
+        width: calc(50% - 10px);
+        flex: 0 0 calc(50% - 10px);
+        box-sizing: border-box;
     }
 
     .countdown-time {
@@ -356,7 +367,19 @@ button:hover {
     }
 
     .other-holidays {
-        grid-template-columns: 1fr;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        justify-items: center;
+        align-items: stretch;
+        margin-top: 20px;
+    }
+
+    .countdown-card {
+        width: 100%;
+        min-width: 0;
+        margin-bottom: 0;
+        box-sizing: border-box;
     }
 
     .footer-tabs {
@@ -380,7 +403,7 @@ button:hover {
 
     .footer-tab.active {
         background-color: var(--primary-color);
-        color: white;
+        color: #fff !important; /* 强制选中态字体为白色，提升对比度 */
     }
 
     footer p {
@@ -534,7 +557,8 @@ footer p {
     }
 
     .footer-tab.active {
-        color: var(--primary-color);
+        background-color: var(--primary-color);
+        color: #fff !important; /* 强制选中态字体为白色，提升对比度 */
         font-weight: bold;
     }
 

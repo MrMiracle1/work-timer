@@ -21,7 +21,7 @@
         <div id="setup-modal" class="modal">
             <div class="modal-content">
                 <h2>首次设置</h2>
-                <p>请设置您的上下班时间</p>
+                <p>请设置您的上下班时间和发薪日</p>
                 <div class="form-group">
                     <label for="work-start-time">上班时间:</label>
                     <input type="time" id="work-start-time" value="09:00">
@@ -29,6 +29,17 @@
                 <div class="form-group">
                     <label for="work-end-time">下班时间:</label>
                     <input type="time" id="work-end-time" value="17:30">
+                </div>
+                <div class="form-group">
+                    <label for="salary-type">发薪日类型:</label>
+                    <select id="salary-type">
+                        <option value="fixed">固定日期</option>
+                        <option value="last">每月最后一天</option>
+                    </select>
+                </div>
+                <div class="form-group" id="salary-fixed-group">
+                    <label for="salary-day">每月发薪日:</label>
+                    <input type="number" id="salary-day" min="1" max="31" value="1">
                 </div>
                 <button id="save-work-time">保存</button>
             </div>
@@ -52,7 +63,7 @@
                         
                         <div class="countdown-card main-card" id="weekend-card">
                             <h3>本周剩余工作时间</h3>
-                            <div class="countdown-time" id="time-weekend">--:--</div>
+                            <div class="countdown-time" id="time-weekend">--小时--分钟</div>
                             <div class="countdown-date" id="date-weekend">--</div>
                         </div>
                     </div>
@@ -120,7 +131,7 @@
             
             <div id="settings" class="tab-content">
                 <div class="settings-section">
-                    <h2>工作时间设置</h2>
+                    <h2>用户设置</h2>
                     <div class="form-group">
                         <label for="settings-work-start-time">上班时间:</label>
                         <input type="time" id="settings-work-start-time">
@@ -128,6 +139,17 @@
                     <div class="form-group">
                         <label for="settings-work-end-time">下班时间:</label>
                         <input type="time" id="settings-work-end-time">
+                    </div>
+                    <div class="form-group">
+                        <label for="settings-salary-type">发薪日类型:</label>
+                        <select id="settings-salary-type">
+                            <option value="fixed">固定日期</option>
+                            <option value="last">每月最后一天</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="settings-salary-fixed-group">
+                        <label for="settings-salary-day">每月发薪日:</label>
+                        <input type="number" id="settings-salary-day" min="1" max="31" value="1">
                     </div>
                     <button id="update-work-time">更新</button>
                 </div>
@@ -141,6 +163,9 @@
                     <div class="form-group" id="custom-time-container" style="display: none;">
                         <label for="custom-time">自定义时间:</label>
                         <input type="datetime-local" id="custom-time">
+                    </div>
+                    <div class="form-group">
+                        <button id="clear-cache">删除缓存（重置为默认设置）</button>
                     </div>
                 </div>
                 
