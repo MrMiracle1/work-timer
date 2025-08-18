@@ -68,6 +68,74 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('update-work-time').addEventListener('click', updateWorkTime);
 });
 
+// 初始化标签页
+function initTabs() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const footerTabs = document.querySelectorAll('.footer-tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    // 设置默认标签页
+    switchTab('countdown');
+    
+    // 添加标签按钮点击事件
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabId = btn.getAttribute('data-tab');
+            switchTab(tabId);
+        });
+    });
+    
+    // 添加底部标签点击事件
+    footerTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabId = tab.getAttribute('data-tab');
+            switchTab(tabId);
+        });
+    });
+}
+
+// 切换标签页
+function switchTab(tabId) {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const footerTabs = document.querySelectorAll('.footer-tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    // 更新当前活动标签
+    activeTab = tabId;
+    
+    // 更新标签按钮状态
+    tabBtns.forEach(btn => {
+        if (btn.getAttribute('data-tab') === tabId) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // 更新底部标签状态
+    footerTabs.forEach(tab => {
+        if (tab.getAttribute('data-tab') === tabId) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // 更新内容区域
+    tabContents.forEach(content => {
+        if (content.getAttribute('id') === tabId) {
+            content.classList.add('active');
+        } else {
+            content.classList.remove('active');
+        }
+    });
+    
+    // 如果切换到日历标签，初始化日历
+    if (tabId === 'calendar') {
+        initCalendar();
+    }
+}
+
 // 初始化应用
 function initApp() {
     // 从本地存储加载自定义事件
@@ -1049,45 +1117,15 @@ function updatePiggyBank() {
     const remainingDays = Math.ceil((nextSalaryDay - now) / (1000 * 60 * 60 * 24));
 
     // 计算进度百分比
-    // 根据用户需求，进度应该是1减去现在的值
     const progressPercentage = Math.max(0, Math.min(100, ((totalDays - remainingDays) / totalDays) * 100));
 
-    // 更新显示
-    const progressText = document.getElementById('piggy-bank-progress-text');
-    if (progressText) {
-        progressText.textContent = `存钱进度: ${Math.round(progressPercentage)}%`;
-    }
+    // 更新进度条
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
 
-    // 更新存钱罐内的钱的显示
-    const moneyInside = document.getElementById('money-inside');
-    if (moneyInside) {
-        // 清空现有元素
-        while (moneyInside.firstChild) {
-            moneyInside.removeChild(moneyInside.firstChild);
-        }
-
-        // 根据进度添加钱的元素
-        const maxBills = 8; // 最多显示8张钱
-        const billCount = Math.floor(progressPercentage / (100 / maxBills));
-
-        for (let i = 0; i < billCount; i++) {
-            const bill = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            // 随机位置和旋转，使钱看起来更自然
-            const xOffset = Math.random() * 10 - 5;
-            const rotate = Math.random() * 6 - 3;
-            const yPos = 150 - i * 12;
-
-            bill.setAttribute('x', `${75 + xOffset}`);
-            bill.setAttribute('y', `${yPos}`);
-            bill.setAttribute('width', '50');
-            bill.setAttribute('height', '8');
-            bill.setAttribute('fill', i % 2 === 0 ? '#2ecc71' : '#3498db');
-            bill.setAttribute('opacity', '0.8');
-            bill.setAttribute('transform', `rotate(${rotate} ${75 + xOffset + 25} ${yPos + 4})`);
-            bill.setAttribute('rx', '2');
-
-            moneyInside.appendChild(bill);
-        }
+    if (progressFill && progressText) {
+        progressFill.style.width = `${progressPercentage}%`;
+        progressText.textContent = `本月工资进度：${Math.round(progressPercentage)}%`;
     }
 }
 
