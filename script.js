@@ -1,6 +1,8 @@
 // 全局变量
 let events = [];
-let workStartTime = localStorage.getItem('workStartTime') || '09:00';
+let workStartTime = localStorage.getItem('workStartTime') || '08:30';
+let lunchStartTime = localStorage.getItem('lunchStartTime') || '11:30';
+let lunchEndTime = localStorage.getItem('lunchEndTime') || '14:00';
 let workEndTime = localStorage.getItem('workEndTime') || '17:30';
 let holidays = JSON.parse(localStorage.getItem('holidays')) || {};
 let workdaysOff = JSON.parse(localStorage.getItem('workdaysOff')) || {}; // 公休假期
@@ -14,6 +16,10 @@ let customTime = localStorage.getItem('customTime') || null;
 let workTimeConfig = {
     startHour: parseInt(workStartTime.split(':')[0]),
     startMinute: parseInt(workStartTime.split(':')[1]),
+    lunchStartHour: parseInt(lunchStartTime.split(':')[0]),
+    lunchStartMinute: parseInt(lunchStartTime.split(':')[1]),
+    lunchEndHour: parseInt(lunchEndTime.split(':')[0]),
+    lunchEndMinute: parseInt(lunchEndTime.split(':')[1]),
     endHour: parseInt(workEndTime.split(':')[0]),
     endMinute: parseInt(workEndTime.split(':')[1])
 };
@@ -72,8 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.clear(); // 清除所有存储
             
             // 重置当前页面的设置表单
-            document.getElementById('settings-work-start-time').value = '09:00';
-            document.getElementById('settings-work-end-time').value = '18:00';
+            document.getElementById('settings-work-start-time').value = '08:30';
+            document.getElementById('settings-work-end-time').value = '17:30';
             document.getElementById('settings-salary-type').value = 'fixed';
             document.getElementById('settings-salary-day').value = getDefaultSalaryDay();
 
@@ -87,10 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// 默认发薪日为本月1号
+// 默认发薪日为每月15号（返回数字字符串以适配 number 输入）
 function getDefaultSalaryDay() {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+    return '15';
 }
 
 // 首次进入弹窗逻辑
@@ -107,29 +112,47 @@ function checkFirstVisit() {
     }
 
     // 显示首次设置弹窗
-    document.getElementById('work-start-time').value = '09:00';
-    document.getElementById('work-end-time').value = '18:00';
+    document.getElementById('work-start-time').value = '08:30';
+    document.getElementById('lunch-start-time').value = '11:30';
+    document.getElementById('lunch-end-time').value = '14:00';
+    document.getElementById('work-end-time').value = '17:30';
     document.getElementById('salary-type').value = 'fixed';
-    document.getElementById('salary-day').value = '1';
+    document.getElementById('salary-day').value = '15';
     showSetupModal();
 }
 
 // 保存首次设置
 document.getElementById('save-work-time').addEventListener('click', function() {
+    const startTime = document.getElementById('work-start-time').value;
+    const lunchStart = document.getElementById('lunch-start-time').value;
+    const lunchEnd = document.getElementById('lunch-end-time').value;
+    const endTime = document.getElementById('work-end-time').value;
+    
+    // 验证时间设置的合理性
+    if (!validateTimeSettings(startTime, lunchStart, lunchEnd, endTime)) {
+        return;
+    }
+    
     // 保存设置到 localStorage
-    localStorage.setItem('workStart', document.getElementById('work-start-time').value);
-    localStorage.setItem('workEnd', document.getElementById('work-end-time').value);
+    localStorage.setItem('workStartTime', startTime);
+    localStorage.setItem('lunchStartTime', lunchStart);
+    localStorage.setItem('lunchEndTime', lunchEnd);
+    localStorage.setItem('workEndTime', endTime);
     localStorage.setItem('salaryType', document.getElementById('salary-type').value);
     localStorage.setItem('salaryDay', document.getElementById('salary-day').value);
     
     // 标记已完成初始设置
     localStorage.setItem('hasInitialized', 'true');
+    localStorage.setItem('hasVisited', 'true');
     
     // 隐藏首次设置弹窗
     document.getElementById('setup-modal').classList.remove('show');
     
     // 显示保存成功提示
     showToast('设置已保存');
+    
+    // 重新初始化应用
+    initApp();
 });
 
 // 页面加载时检查是否首次进入（没有缓存即首次进入）
@@ -207,6 +230,24 @@ function switchTab(tabId) {
 
 // 初始化应用
 function initApp() {
+    // 从本地存储重新加载全局变量，确保使用最新值
+    workStartTime = localStorage.getItem('workStartTime') || '08:30';
+    lunchStartTime = localStorage.getItem('lunchStartTime') || '11:30';
+    lunchEndTime = localStorage.getItem('lunchEndTime') || '14:00';
+    workEndTime = localStorage.getItem('workEndTime') || '17:30';
+    
+    // 更新工作时间配置
+    workTimeConfig = {
+        startHour: parseInt(workStartTime.split(':')[0]),
+        startMinute: parseInt(workStartTime.split(':')[1]),
+        lunchStartHour: parseInt(lunchStartTime.split(':')[0]),
+        lunchStartMinute: parseInt(lunchStartTime.split(':')[1]),
+        lunchEndHour: parseInt(lunchEndTime.split(':')[0]),
+        lunchEndMinute: parseInt(lunchEndTime.split(':')[1]),
+        endHour: parseInt(workEndTime.split(':')[0]),
+        endMinute: parseInt(workEndTime.split(':')[1])
+    };
+    
     // 从本地存储加载自定义事件
     loadEventsFromLocalStorage();
 
@@ -215,16 +256,39 @@ function initApp() {
 
     // 渲染所有事件
     renderEvents();
+    bindMainCardEvents();
 
     // 初始化存钱罐
     updatePiggyBank();
 
     // 设置定时器，每秒更新倒计时
-    setInterval(updateCountdowns, 1000);
+    setInterval(() => {
+        updateCountdowns();
+        bindMainCardEvents();
+    }, 1000);
     
     // 设置工作时间输入框的值
     document.getElementById('settings-work-start-time').value = workStartTime;
+    document.getElementById('settings-lunch-start-time').value = lunchStartTime;
+    document.getElementById('settings-lunch-end-time').value = lunchEndTime;
     document.getElementById('settings-work-end-time').value = workEndTime;
+    const savedSalaryType = localStorage.getItem('salaryType') || 'fixed';
+    const savedSalaryDay = localStorage.getItem('salaryDay') || '1';
+    const settingsSalaryTypeEl = document.getElementById('settings-salary-type');
+    const settingsSalaryDayEl = document.getElementById('settings-salary-day');
+    if (settingsSalaryTypeEl) settingsSalaryTypeEl.value = savedSalaryType;
+    if (settingsSalaryDayEl) settingsSalaryDayEl.value = savedSalaryDay;
+
+    const holidaysTextEl = document.getElementById('official-holidays-json');
+    if (holidaysTextEl) {
+        const stored = localStorage.getItem('officialHolidays');
+        holidaysTextEl.value = stored ? stored : '';
+    }
+    const weekendWorkTextEl = document.getElementById('official-weekendwork-json');
+    if (weekendWorkTextEl) {
+        const storedW = localStorage.getItem('officialWeekendWorkdays');
+        weekendWorkTextEl.value = storedW ? storedW : '';
+    }
 
     // 初始化开发者设置
     const developerModeCheckbox = document.getElementById('developer-mode');
@@ -262,30 +326,6 @@ function initApp() {
 function showSetupModal() {
     const modal = document.getElementById('setup-modal');
     modal.style.display = 'flex';
-    
-    document.getElementById('save-work-time').addEventListener('click', function() {
-        const startTime = document.getElementById('work-start-time').value;
-        const endTime = document.getElementById('work-end-time').value;
-        
-        if (startTime && endTime) {
-            workStartTime = startTime;
-            workEndTime = endTime;
-            
-            // 保存到本地存储
-            localStorage.setItem('workStartTime', workStartTime);
-            localStorage.setItem('workEndTime', workEndTime);
-            localStorage.setItem('hasVisited', 'true');
-            
-            // 关闭模态框
-            modal.style.display = 'none';
-            
-            // 初始化应用
-            initApp();
-            
-            // Toast反馈
-            showToast('首次设置已保存');
-        }
-    });
 }
 
 // 更新工作时间
@@ -297,39 +337,104 @@ function daysBetween(date1, date2) {
 
 function updateWorkTime() {
     const startTime = document.getElementById('settings-work-start-time').value;
+    const lunchStart = document.getElementById('settings-lunch-start-time').value;
+    const lunchEnd = document.getElementById('settings-lunch-end-time').value;
     const endTime = document.getElementById('settings-work-end-time').value;
 
-    if (startTime && endTime) {
-        workStartTime = startTime;
-        workEndTime = endTime;
-
-        // 更新工作时间配置
-        workTimeConfig = {
-            startHour: parseInt(workStartTime.split(':')[0]),
-            startMinute: parseInt(workStartTime.split(':')[1]),
-            endHour: parseInt(workEndTime.split(':')[0]),
-            endMinute: parseInt(workEndTime.split(':')[1])
-        };
-
-        // 保存到本地存储
-        localStorage.setItem('workStartTime', workStartTime);
-        localStorage.setItem('workEndTime', workEndTime);
-
-        const salaryType = document.getElementById('settings-salary-type').value;
-        localStorage.setItem('salaryType', salaryType);
-        if (salaryType === 'fixed') {
-            localStorage.setItem('salaryDay', document.getElementById('settings-salary-day').value);
-        } else {
-            localStorage.removeItem('salaryDay');
-        }
-
-        // 重新加载事件
-        addDefaultEvents();
-        renderEvents();
-        
-        // 保存成功后弹出 Toast
-        showToast('设置已更新');
+    // 验证时间设置的合理性
+    if (!validateTimeSettings(startTime, lunchStart, lunchEnd, endTime)) {
+        return;
     }
+
+    workStartTime = startTime;
+    lunchStartTime = lunchStart;
+    lunchEndTime = lunchEnd;
+    workEndTime = endTime;
+
+    // 更新工作时间配置
+    workTimeConfig = {
+        startHour: parseInt(workStartTime.split(':')[0]),
+        startMinute: parseInt(workStartTime.split(':')[1]),
+        lunchStartHour: parseInt(lunchStartTime.split(':')[0]),
+        lunchStartMinute: parseInt(lunchStartTime.split(':')[1]),
+        lunchEndHour: parseInt(lunchEndTime.split(':')[0]),
+        lunchEndMinute: parseInt(lunchEndTime.split(':')[1]),
+        endHour: parseInt(workEndTime.split(':')[0]),
+        endMinute: parseInt(workEndTime.split(':')[1])
+    };
+
+    // 保存到本地存储
+    localStorage.setItem('workStartTime', workStartTime);
+    localStorage.setItem('lunchStartTime', lunchStartTime);
+    localStorage.setItem('lunchEndTime', lunchEndTime);
+    localStorage.setItem('workEndTime', workEndTime);
+
+    const salaryType = document.getElementById('settings-salary-type').value;
+    localStorage.setItem('salaryType', salaryType);
+    if (salaryType === 'fixed') {
+        localStorage.setItem('salaryDay', document.getElementById('settings-salary-day').value);
+    } else {
+        localStorage.removeItem('salaryDay');
+    }
+
+    // 重新加载事件
+    addDefaultEvents();
+    renderEvents();
+    
+    // 保存成功后弹出 Toast
+    showToast('设置已更新');
+}
+
+let defaultOfficialHolidays = {};
+
+function ensureOfficialHolidaysInitialized() {
+    fetch('config/holidays.json')
+        .then(r => r.json())
+        .then(cfg => {
+            defaultOfficialHolidays = cfg.officialHolidays || {};
+            const defaultWeekendWork = cfg.weekendWorkdays || {};
+            if (!localStorage.getItem('officialHolidays')) {
+                localStorage.setItem('officialHolidays', JSON.stringify(defaultOfficialHolidays));
+            }
+            if (!localStorage.getItem('officialWeekendWorkdays')) {
+                localStorage.setItem('officialWeekendWorkdays', JSON.stringify(defaultWeekendWork));
+            }
+        })
+        .catch(() => {
+            if (!localStorage.getItem('officialHolidays')) {
+                localStorage.setItem('officialHolidays', JSON.stringify({}));
+            }
+            if (!localStorage.getItem('officialWeekendWorkdays')) {
+                localStorage.setItem('officialWeekendWorkdays', JSON.stringify({}));
+            }
+        });
+}
+
+function mergeOfficialHolidaysIntoCalendar(year, month) {
+    const holidays = JSON.parse(localStorage.getItem('officialHolidays') || '{}');
+    const weekendWork = JSON.parse(localStorage.getItem('officialWeekendWorkdays') || '{}');
+    Object.keys(holidays).forEach(k => {
+        const parts = k.split('-').map(Number);
+        if (parts.length === 3) {
+            const y = parts[0], m = parts[1], d = parts[2];
+            if (y === year && m === month + 1) {
+                const key = `${y}-${m}-${d}`;
+                workdaysOff[key] = true;
+            }
+        }
+    });
+    Object.keys(weekendWork).forEach(k => {
+        const parts = k.split('-').map(Number);
+        if (parts.length === 3) {
+            const y = parts[0], m = parts[1], d = parts[2];
+            if (y === year && m === month + 1) {
+                const key = `${y}-${m}-${d}`;
+                weekendsWork[key] = true;
+            }
+        }
+    });
+    localStorage.setItem('workdaysOff', JSON.stringify(workdaysOff));
+    localStorage.setItem('weekendsWork', JSON.stringify(weekendsWork));
 }
 
 // 从本地存储加载事件
@@ -370,14 +475,14 @@ function addDefaultEvents() {
         time: workEndTime
     });
     
-    // 添加午饭时间 - 每天11:30
+    // 添加午饭时间 - 每天
     events.push({
         id: 'lunch-time',
         name: '午饭时间',
         type: 'preset',
         category: 'workday',
         repeat: 'daily',
-        time: '11:30'
+        time: lunchStartTime
     });
     
     // 添加发工资日 - 根据用户设置
@@ -588,6 +693,7 @@ function renderEvents() {
     const sortedEvents = eventsWithNextOccurrence.sort((a, b) => 
         a.nextOccurrence.getTime() - b.nextOccurrence.getTime()
     );
+    window.lastSortedEvents = sortedEvents;
     
     // 渲染主要倒计时
     renderMainCountdowns(sortedEvents);
@@ -607,29 +713,28 @@ function renderMainCountdowns(sortedEvents) {
     const salaryDayCard = document.getElementById('salary-day-card');
     const nextHolidayCard = document.getElementById('next-holiday-card');
 
-    // 为主要卡片添加点击事件
-    [workdayEndCard, weekendCard, salaryDayCard, nextHolidayCard].forEach(card => {
-        // 先移除已有的事件监听器
-        const newCard = card.cloneNode(true);
-        card.parentNode.replaceChild(newCard, card);
-        // 添加新的事件监听器
-        newCard.addEventListener('click', () => {
-            showToast('马上下班啦，加油！！');
-        });
-    });
     
     // 找到下班时间事件
     const workdayEndEvent = sortedEvents.find(e => e.id === 'workday-end');
     if (workdayEndEvent) {
         document.getElementById('time-workday-end').textContent = formatTimeRemaining(workdayEndEvent.timeRemaining, 'seconds');
         document.getElementById('date-workday-end').style.display = 'none'; // 精确到秒，不显示日期
+        const cardEl = document.getElementById('workday-end-card');
+        const tt = buildCalculationTooltip(workdayEndEvent);
+        if (cardEl) cardEl.setAttribute('title', tt);
     }
     
     // 找到周末事件
     const weekendEvent = sortedEvents.find(e => e.id === 'weekend');
     if (weekendEvent) {
-        document.getElementById('time-weekend').textContent = formatTimeRemaining(weekendEvent.timeRemaining, 'hours');
+        // 对于本周剩余工作时间，我们希望显示更精确的格式（小时和分钟）
+        const hours = weekendEvent.timeRemaining.hours;
+        const minutes = weekendEvent.timeRemaining.minutes;
+        document.getElementById('time-weekend').textContent = `${hours}小时${minutes}分钟`;
         document.getElementById('date-weekend').textContent = formatDate(weekendEvent.nextOccurrence, false); // 只显示日期
+        const cardEl = document.getElementById('weekend-card');
+        const tt = buildCalculationTooltip(weekendEvent);
+        if (cardEl) cardEl.setAttribute('title', tt);
     }
     
     // 找到发薪日事件
@@ -637,7 +742,10 @@ function renderMainCountdowns(sortedEvents) {
     if (salaryDayEvent) {
         document.getElementById('time-salary-day').textContent = formatTimeRemaining(salaryDayEvent.timeRemaining, 'days');
         document.getElementById('date-salary-day').textContent = formatDate(salaryDayEvent.nextOccurrence, false); // 只显示日期
-    }
+        const cardEl = document.getElementById('salary-day-card');
+        const tt = buildCalculationTooltip(salaryDayEvent);
+        if (cardEl) cardEl.setAttribute('title', tt);
+}
     
     // 确定期待时间（午饭或最近的假期）
     const now = new Date();
@@ -679,6 +787,62 @@ function renderMainCountdowns(sortedEvents) {
         } else {
             document.getElementById('date-next-holiday').textContent = formatDate(expectationEvent.nextOccurrence, false); // 只显示日期
         }
+    }
+}
+function buildCalculationTooltip(event) {
+    const now = getCurrentTime();
+    if (event.id === 'workday-end') {
+        return `下班倒计时\n现在: ${padZero(now.getHours())}:${padZero(now.getMinutes())}`+
+               `\n上班: ${workStartTime} 午休: ${lunchStartTime}-${lunchEndTime} 下班: ${workEndTime}`+
+               `\n剩余: ${padZero(event.timeRemaining.hours)}:${padZero(event.timeRemaining.minutes)}:${padZero(event.timeRemaining.seconds)}`;
+    }
+    if (event.id === 'weekend') {
+        return `本周剩余工作时间\n至本周五下班的累计工作时长`+
+               `\n上班: ${workStartTime} 午休: ${lunchStartTime}-${lunchEndTime} 下班: ${workEndTime}`+
+               `\n累计: ${event.timeRemaining.hours}小时 ${event.timeRemaining.minutes}分钟`;
+    }
+    if (event.id === 'salary-day') {
+        const st = localStorage.getItem('salaryType') || 'fixed';
+        const sd = localStorage.getItem('salaryDay') || '1';
+        return `发薪倒计时\n类型: ${st==='fixed'?'固定日期':'每月最后一天'}${st==='fixed'?` | 日期: ${sd}号`:''}`+
+               `\n剩余: ${event.timeRemaining.days}天`;
+    }
+    return '';
+}
+
+let tooltipEl;
+function ensureTooltip() {
+    if (!tooltipEl) {
+        tooltipEl = document.createElement('div');
+        tooltipEl.className = 'tooltip-card';
+        document.body.appendChild(tooltipEl);
+    }
+}
+
+function showTooltipAtElement(el, text) {
+    ensureTooltip();
+    tooltipEl.textContent = text;
+    const rect = el.getBoundingClientRect();
+    const padding = 8;
+    const top = Math.max(8, rect.top + window.scrollY + padding);
+    const left = Math.min(window.innerWidth - 20, rect.left + window.scrollX + rect.width + padding);
+    tooltipEl.style.top = `${top}px`;
+    tooltipEl.style.left = `${left}px`;
+    tooltipEl.style.display = 'block';
+}
+
+function hideTooltip() {
+    if (tooltipEl) tooltipEl.style.display = 'none';
+}
+
+// 将调试信息通过请求发送到本地服务器，以在终端可见
+function emitTerminalDebug(message) {
+    try {
+        const url = `/__hover_debug__?t=${Date.now()}&msg=${encodeURIComponent(message)}`;
+        const img = new Image();
+        img.src = url;
+    } catch (e) {
+        // 忽略错误以避免影响交互
     }
 }
 
@@ -944,14 +1108,13 @@ function getTimeRemaining(targetDate, event) {
         const currentMinute = now.getMinutes();
         const currentSecond = now.getSeconds();
         
-        // 午饭时间固定为11:30
-        const lunchHour = 11;
-        const lunchMinute = 30;
+        // 午饭开始时间
+        const [lunchStartHour, lunchStartMinute] = lunchStartTime.split(':').map(Number);
         
-        // 如果当前时间在11:30之前
-        if (currentHour < lunchHour || (currentHour === lunchHour && currentMinute < lunchMinute)) {
-            // 计算到午饭时间的剩余时间（精确到秒）
-            const remainingSeconds = (lunchHour * 3600 + lunchMinute * 60) - (currentHour * 3600 + currentMinute * 60 + currentSecond);
+        // 如果当前时间在午饭开始时间之前
+        if (currentHour < lunchStartHour || (currentHour === lunchStartHour && currentMinute < lunchStartMinute)) {
+            // 计算到午饭开始时间的剩余时间（精确到秒）
+            const remainingSeconds = (lunchStartHour * 3600 + lunchStartMinute * 60) - (currentHour * 3600 + currentMinute * 60 + currentSecond);
             return {
                 total: remainingSeconds * 1000,
                 days: 0,
@@ -967,6 +1130,8 @@ function getTimeRemaining(targetDate, event) {
     if (event && event.id === 'workday-end') {
         // 获取工作开始和结束时间
         const [startHour, startMinute] = workStartTime.split(':').map(Number);
+        const [lunchStartHour, lunchStartMinute] = lunchStartTime.split(':').map(Number);
+        const [lunchEndHour, lunchEndMinute] = lunchEndTime.split(':').map(Number);
         const [endHour, endMinute] = workEndTime.split(':').map(Number);
         
         // 计算当前时间
@@ -974,10 +1139,13 @@ function getTimeRemaining(targetDate, event) {
         const currentMinute = now.getMinutes();
         const currentSecond = now.getSeconds();
         
+        // 计算午休时长（分钟）
+        const lunchDurationMinutes = (lunchEndHour * 60 + lunchEndMinute) - (lunchStartHour * 60 + lunchStartMinute);
+        
         // 如果当前时间在工作开始时间之前
         if (currentHour < startHour || (currentHour === startHour && currentMinute < startMinute)) {
-            // 返回全天工作时间
-            const workTotalMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+            // 返回全天工作时间（减去午休时间）
+            const workTotalMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute) - lunchDurationMinutes;
             return {
                 total: workTotalMinutes * 60 * 1000,
                 days: 0,
@@ -987,8 +1155,39 @@ function getTimeRemaining(targetDate, event) {
                 isWorkTime: true
             };
         } 
-        // 如果当前时间在工作时间内
-        else if (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
+        // 如果当前时间在上午工作时间内（上班时间到午休开始时间之前）
+        else if ((currentHour < lunchStartHour || (currentHour === lunchStartHour && currentMinute < lunchStartMinute)) &&
+                 (currentHour > startHour || (currentHour === startHour && currentMinute >= startMinute))) {
+            // 计算剩余工作时间（上午工作时间 + 下午工作时间）
+            const remainingSeconds = (lunchStartHour * 3600 + lunchStartMinute * 60) - (currentHour * 3600 + currentMinute * 60 + currentSecond) +
+                                     (endHour * 3600 + endMinute * 60) - (lunchEndHour * 3600 + lunchEndMinute * 60);
+            return {
+                total: remainingSeconds * 1000,
+                days: 0,
+                hours: Math.floor(remainingSeconds / 3600),
+                minutes: Math.floor((remainingSeconds % 3600) / 60),
+                seconds: remainingSeconds % 60,
+                isWorkTime: true
+            };
+        }
+        // 如果当前时间在午休时间内
+        else if ((currentHour > lunchStartHour || (currentHour === lunchStartHour && currentMinute >= lunchStartMinute)) &&
+                 (currentHour < lunchEndHour || (currentHour === lunchEndHour && currentMinute < lunchEndMinute))) {
+            // 计算剩余工作时间（下午工作时间）
+            const remainingSeconds = (endHour * 3600 + endMinute * 60) - (lunchEndHour * 3600 + lunchEndMinute * 60) - 
+                                     ((currentHour * 3600 + currentMinute * 60 + currentSecond) - (lunchStartHour * 3600 + lunchStartMinute * 60));
+            return {
+                total: remainingSeconds * 1000,
+                days: 0,
+                hours: Math.floor(remainingSeconds / 3600),
+                minutes: Math.floor((remainingSeconds % 3600) / 60),
+                seconds: remainingSeconds % 60,
+                isWorkTime: true
+            };
+        }
+        // 如果当前时间在下午工作时间内
+        else if ((currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) &&
+                 (currentHour > lunchEndHour || (currentHour === lunchEndHour && currentMinute >= lunchEndMinute))) {
             // 计算剩余工作时间（精确到秒）
             const remainingSeconds = (endHour * 3600 + endMinute * 60) - (currentHour * 3600 + currentMinute * 60 + currentSecond);
             return {
@@ -1002,36 +1201,81 @@ function getTimeRemaining(targetDate, event) {
         }
     }
     
-    // 如果是周末事件，计算到下一个周末的剩余工作时间
+    // 如果是周末事件，计算到本周五下班时间的剩余工作时间
     if (workTimeConfig && event && event.id === 'weekend') {
-        // 计算下一个周末（周六）
-        const nextWeekend = new Date(now);
-        const daysToSaturday = 6 - now.getDay(); // 6是周六
-        nextWeekend.setDate(nextWeekend.getDate() + (daysToSaturday <= 0 ? 7 + daysToSaturday : daysToSaturday));
-        nextWeekend.setHours(23, 59, 59, 999); // 设置为周六晚上23:59:59
+        // 计算本周五的日期
+        const nextFriday = new Date(now);
+        const daysToFriday = 5 - now.getDay(); // 5是周五
+        // 如果今天已经超过周五，则计算到本周五（可能是过去的周五）
+        if (daysToFriday < 0) {
+            nextFriday.setDate(nextFriday.getDate() + daysToFriday);
+        } else if (daysToFriday > 0) {
+            nextFriday.setDate(nextFriday.getDate() + daysToFriday);
+        }
+        // 设置为周五下班时间
+        nextFriday.setHours(workTimeConfig.endHour, workTimeConfig.endMinute || 0, 0, 0);
 
-        // 计算从现在到下一个周末的剩余工作时间总和（毫秒）
+        // 如果当前时间已经超过本周五下班时间，则计算到本周五下班时间的剩余时间为0
+        if (now >= nextFriday) {
+            return {
+                total: 0,
+                days: 0,
+                hours: 0,
+                minutes: 0,
+                seconds: 0,
+                isWorkTime: true
+            };
+        }
+
+        // 计算从现在到本周五下班时间的剩余工作时间总和（毫秒）
         let totalWorkTime = 0;
         const currentDate = new Date(now);
-        const workDayDuration = (workTimeConfig.endHour * 60 + workTimeConfig.endMinute - workTimeConfig.startHour * 60 - workTimeConfig.startMinute) * 60 * 1000;
+        
+        // 计算每天的工作时长（减去午休时间）
+        const workDayDuration = ((workTimeConfig.endHour * 60 + workTimeConfig.endMinute) - 
+                                (workTimeConfig.startHour * 60 + workTimeConfig.startMinute) - 
+                                ((workTimeConfig.lunchEndHour * 60 + workTimeConfig.lunchEndMinute) - 
+                                (workTimeConfig.lunchStartHour * 60 + workTimeConfig.lunchStartMinute))) * 60 * 1000;
 
-        while (currentDate < nextWeekend) {
-            // 如果是工作日且不是假日
-            if (!isWeekend(currentDate) && !isHoliday(currentDate)) {
+        while (currentDate < nextFriday) {
+            // 如果是工作日且不是假日且不是周五之后的日期
+            const currentDay = currentDate.getDay();
+            if (currentDay >= 1 && currentDay <= 5 && !isHoliday(currentDate)) { // 周一到周五
                 const workStart = new Date(currentDate);
                 workStart.setHours(workTimeConfig.startHour, workTimeConfig.startMinute || 0, 0, 0);
+
+                const lunchStart = new Date(currentDate);
+                lunchStart.setHours(workTimeConfig.lunchStartHour, workTimeConfig.lunchStartMinute || 0, 0, 0);
+                
+                const lunchEnd = new Date(currentDate);
+                lunchEnd.setHours(workTimeConfig.lunchEndHour, workTimeConfig.lunchEndMinute || 0, 0, 0);
 
                 const workEnd = new Date(currentDate);
                 workEnd.setHours(workTimeConfig.endHour, workTimeConfig.endMinute || 0, 0, 0);
 
-                if (currentDate < workStart) {
-                    // 当前时间在工作开始前，增加全天工作时间
-                    totalWorkTime += workDayDuration;
-                } else if (currentDate < workEnd) {
-                    // 当前时间在工作时间内，增加剩余工作时间
-                    totalWorkTime += workEnd - currentDate;
+                // 检查是否是今天
+                const isToday = currentDate.toDateString() === now.toDateString();
+                
+                if (isToday) {
+                    // 今天需要特殊处理，计算当前时间到下班时间的剩余工作时间
+                    if (now < workStart) {
+                        // 当前时间在工作开始前，增加全天工作时间
+                        totalWorkTime += workDayDuration;
+                    } else if (now < lunchStart) {
+                        // 当前时间在上午工作时间内
+                        totalWorkTime += (lunchStart - now) + (workEnd - lunchEnd);
+                } else if (now < lunchEnd) {
+                    // 当前时间在午休时间内
+                    totalWorkTime += workEnd - lunchEnd;
+                } else if (now < workEnd) {
+                    // 当前时间在下午工作时间内
+                    totalWorkTime += workEnd - now;
                 }
-                // 如果当前时间在工作结束后，不增加时间
+                    // 如果当前时间在工作结束后，不增加时间
+                } else {
+                    // 不是今天，增加全天工作时间
+                    totalWorkTime += workDayDuration;
+                }
             }
 
             // 移动到下一天
@@ -1134,6 +1378,38 @@ function formatDate(date, showTime = true) {
 // 数字补零
 function padZero(num) {
     return num < 10 ? `0${num}` : num;
+}
+
+// 验证时间设置的合理性
+function validateTimeSettings(startTime, lunchStart, lunchEnd, endTime) {
+    // 将时间字符串转换为分钟数进行比较
+    function timeToMinutes(timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+    }
+    
+    const startMinutes = timeToMinutes(startTime);
+    const lunchStartMinutes = timeToMinutes(lunchStart);
+    const lunchEndMinutes = timeToMinutes(lunchEnd);
+    const endMinutes = timeToMinutes(endTime);
+    
+    // 检查时间顺序是否合理
+    if (startMinutes >= lunchStartMinutes) {
+        alert('上班时间必须早于午休开始时间');
+        return false;
+    }
+    
+    if (lunchStartMinutes >= lunchEndMinutes) {
+        alert('午休开始时间必须早于午休结束时间');
+        return false;
+    }
+    
+    if (lunchEndMinutes >= endMinutes) {
+        alert('午休结束时间必须早于下班时间');
+        return false;
+    }
+    
+    return true;
 }
 
 // 获取重复类型文本
@@ -1259,11 +1535,6 @@ let currentYear;
 
 // 初始化日历
 function initCalendar() {
-    // 如果日历已经初始化，则不重复初始化
-    if (document.getElementById('calendar').dataset.initialized === 'true') {
-        return;
-    }
-    
     const today = new Date();
     currentMonth = today.getMonth();
     currentYear = today.getFullYear();
@@ -1272,7 +1543,10 @@ function initCalendar() {
     renderCalendar(currentMonth, currentYear);
     
     // 上个月按钮
-    document.getElementById('prev-month').addEventListener('click', () => {
+    const prevBtn = document.getElementById('prev-month');
+    const newPrevBtn = prevBtn.cloneNode(true);
+    prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
+    newPrevBtn.addEventListener('click', () => {
         currentMonth--;
         if (currentMonth < 0) {
             currentMonth = 11;
@@ -1282,7 +1556,10 @@ function initCalendar() {
     });
     
     // 下个月按钮
-    document.getElementById('next-month').addEventListener('click', () => {
+    const nextBtn = document.getElementById('next-month');
+    const newNextBtn = nextBtn.cloneNode(true);
+    nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
+    newNextBtn.addEventListener('click', () => {
         currentMonth++;
         if (currentMonth > 11) {
             currentMonth = 0;
@@ -1290,9 +1567,6 @@ function initCalendar() {
         }
         renderCalendar(currentMonth, currentYear);
     });
-    
-    // 标记日历已初始化
-    document.getElementById('calendar').dataset.initialized = 'true';
 }
 
 // 渲染日历
@@ -1306,7 +1580,9 @@ function renderCalendar(month, year) {
     // 设置月份和年份标题
     monthYearText.textContent = `${year}年${monthNames[month]}`;
     
-    // 清空日历
+    ensureOfficialHolidaysInitialized();
+    mergeOfficialHolidaysIntoCalendar(year, month);
+    
     calendarDays.innerHTML = '';
     
     // 获取当月第一天
@@ -1356,6 +1632,15 @@ function renderCalendar(month, year) {
                 dayElement.classList.add('workday-off');
             }
         }
+        const officialData = JSON.parse(localStorage.getItem('officialHolidays') || '{}');
+        if (officialData[dateStr]) {
+            const label = document.createElement('div');
+            label.className = 'holiday-label';
+            label.textContent = officialData[dateStr];
+            dayElement.appendChild(label);
+            dayElement.classList.add('workday-off');
+            dayElement.classList.remove('workday');
+        }
         // 点击事件 - 切换假日/串休状态
         dayElement.addEventListener('click', () => {
             const dateStr = `${year}-${month + 1}-${i}`;
@@ -1393,21 +1678,7 @@ function renderCalendar(month, year) {
         calendarDays.appendChild(dayElement);
     }
     
-    // 计算本周剩余工作时间，并显示为“xx小时xx分钟”
-    function updateWeekRemainingTime() {
-        // 获取本周剩余秒数
-        let weekSeconds = getWeekRemainingSeconds(); // 你已有的函数
-
-        // 换算为小时和分钟
-        let hours = Math.floor(weekSeconds / 3600);
-        let minutes = Math.floor((weekSeconds % 3600) / 60);
-
-        // 显示为“xx小时xx分钟”
-        document.getElementById('time-weekend').textContent = `${hours}小时${minutes}分钟`;
-    }
-
-    // 初始化时更新一次
-    updateWeekRemainingTime();
+    
 }
 
 // 首次设置弹窗发薪日类型切换
@@ -1422,76 +1693,34 @@ document.getElementById('settings-salary-type').addEventListener('change', funct
         this.value === 'fixed' ? 'block' : 'none';
 });
 
-// 保存设置时
-document.getElementById('save-work-time').addEventListener('click', function() {
-    const startTime = document.getElementById('work-start-time').value;
-    const endTime = document.getElementById('work-end-time').value;
-    
-    if (startTime && endTime) {
-        workStartTime = startTime;
-        workEndTime = endTime;
-        
-        // 保存到本地存储
-        localStorage.setItem('workStartTime', workStartTime);
-        localStorage.setItem('workEndTime', workEndTime);
-        localStorage.setItem('hasVisited', 'true');
-        
-        const salaryType = document.getElementById('salary-type').value;
-        localStorage.setItem('salaryType', salaryType);
-        if (salaryType === 'fixed') {
-            localStorage.setItem('salaryDay', document.getElementById('salary-day').value);
-        } else {
-            localStorage.removeItem('salaryDay');
-        }
-        
-        // 关闭模态框
-        modal.style.display = 'none';
-        
-        // 初始化应用
-        initApp();
-        
-        // Toast反馈
-        showToast('首次设置已保存');
-    }
-});
-
-document.getElementById('update-work-time').addEventListener('click', function() {
-    const startTime = document.getElementById('settings-work-start-time').value;
-    const endTime = document.getElementById('settings-work-end-time').value;
-
-    if (startTime && endTime) {
-        workStartTime = startTime;
-        workEndTime = endTime;
-
-        // 更新工作时间配置
-        workTimeConfig = {
-            startHour: parseInt(workStartTime.split(':')[0]),
-            startMinute: parseInt(workStartTime.split(':')[1]),
-            endHour: parseInt(workEndTime.split(':')[0]),
-            endMinute: parseInt(workEndTime.split(':')[1])
-        };
-
-        // 保存到本地存储
-        localStorage.setItem('workStartTime', workStartTime);
-        localStorage.setItem('workEndTime', workEndTime);
-
-        const salaryType = document.getElementById('settings-salary-type').value;
-        localStorage.setItem('salaryType', salaryType);
-        if (salaryType === 'fixed') {
-            localStorage.setItem('salaryDay', document.getElementById('settings-salary-day').value);
-        } else {
-            localStorage.removeItem('salaryDay');
-        }
-
-        // 重新加载事件
+document.getElementById('import-official-holidays').addEventListener('click', function() {
+    const el = document.getElementById('official-holidays-json');
+    try {
+        const obj = JSON.parse(el.value || '{}');
+        localStorage.setItem('officialHolidays', JSON.stringify(obj));
+        showToast('节假日数据已导入');
         addDefaultEvents();
         renderEvents();
-        
-        // 保存成功后弹出 Toast
-        showToast('设置已更新');
+        if (document.getElementById('calendar').classList.contains('active')) {
+            renderCalendar(currentMonth, currentYear);
+        }
+    } catch (e) {
+        alert('JSON 格式错误');
     }
 });
 
+document.getElementById('reset-official-holidays').addEventListener('click', function() {
+    localStorage.setItem('officialHolidays', JSON.stringify(defaultOfficialHolidays));
+    document.getElementById('official-holidays-json').value = JSON.stringify(defaultOfficialHolidays, null, 2);
+    showToast('已重置为默认节假日');
+    addDefaultEvents();
+    renderEvents();
+    if (document.getElementById('calendar').classList.contains('active')) {
+        renderCalendar(currentMonth, currentYear);
+    }
+});
+
+ 
 // 计算发薪倒计时时，判断类型
 function getNextSalaryDay() {
     const now = getCurrentTime();
@@ -1552,3 +1781,41 @@ document.getElementById('update-work-time').addEventListener('click', function()
     // ...existing code...
     updateSalaryCountdown();
 });
+function bindMainCardEvents() {
+    const cards = [
+        document.getElementById('workday-end-card'),
+        document.getElementById('weekend-card'),
+        document.getElementById('salary-day-card'),
+        document.getElementById('next-holiday-card')
+    ];
+    cards.forEach(card => {
+        if (!card || card.dataset.bound === 'true') return;
+        card.addEventListener('click', () => {
+            showToast('马上下班啦，加油！！');
+        });
+        card.addEventListener('mouseenter', () => {
+            console.log('[HoverDebug] mouseenter card=' + card.id);
+            emitTerminalDebug('[HoverDebug] mouseenter card=' + card.id);
+            const id = card.id;
+            let event;
+            if (id === 'workday-end-card') event = (window.lastSortedEvents || []).find(e => e.id === 'workday-end');
+            if (id === 'weekend-card') event = (window.lastSortedEvents || []).find(e => e.id === 'weekend');
+            if (id === 'salary-day-card') event = (window.lastSortedEvents || []).find(e => e.id === 'salary-day');
+            if (!event) {
+                console.log('[HoverDebug] no event for card=' + card.id);
+                emitTerminalDebug('[HoverDebug] no event for card=' + card.id);
+                return;
+            }
+            const tt = buildCalculationTooltip(event);
+            console.log('[HoverDebug] tooltip for card=' + card.id + '\n' + tt);
+            emitTerminalDebug('[HoverDebug] tooltip for card=' + card.id + '\n' + tt);
+            showTooltipAtElement(card, tt);
+        });
+        card.addEventListener('mouseleave', () => {
+            console.log('[HoverDebug] mouseleave card=' + card.id);
+            emitTerminalDebug('[HoverDebug] mouseleave card=' + card.id);
+            hideTooltip();
+        });
+        card.dataset.bound = 'true';
+    });
+}

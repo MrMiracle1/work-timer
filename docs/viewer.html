@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文档查看器</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --accent-color: #e74c3c;
+            --background-color: #f5f6fa;
+            --text-color: #2c3e50;
+            --card-background: #ffffff;
+            --border-radius: 12px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background-color: var(--card-background);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .back-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .document-content {
+            background-color: var(--card-background);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+        }
+
+        .document-content h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .document-content h2 {
+            font-size: 24px;
+            margin: 25px 0 15px 0;
+            color: var(--primary-color);
+        }
+
+        .document-content h3 {
+            font-size: 20px;
+            margin: 20px 0 10px 0;
+        }
+
+        .document-content p {
+            margin-bottom: 15px;
+        }
+
+        .document-content ul, .document-content ol {
+            margin-left: 30px;
+            margin-bottom: 20px;
+        }
+
+        .document-content li {
+            margin-bottom: 8px;
+        }
+
+        .document-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .document-content a:hover {
+            text-decoration: underline;
+        }
+
+        .document-content code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .document-content pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        .document-content pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+
+        .document-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .document-content table, .document-content th, .document-content td {
+            border: 1px solid #ddd;
+        }
+
+        .document-content th, .document-content td {
+            padding: 12px;
+            text-align: left;
+        }
+
+        .document-content th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        .document-content tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .document-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 10px 20px;
+            margin: 20px 0;
+            background-color: #f8f9fa;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .document-content {
+                padding: 20px;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 id="document-title">文档查看器</h1>
+            <a href="/" class="back-btn" id="back-btn">返回主页</a>
+        </header>
+        <div class="document-content">
+            <div id="document-content">加载中...</div>
+        </div>
+    </div>
+
+    <script>
+        // 获取URL参数
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(window.location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // 文档标题映射
+        const documentTitles = {
+            'product_document.md': '产品文档',
+            'prompt_document.md': 'Prompt指令文档',
+            'development_log.md': '开发日志',
+            'user_manual.md': '用户手册'
+        };
+
+        // 加载文档内容
+        function loadDocument() {
+            const docFile = getUrlParameter('doc');
+            const title = documentTitles[docFile] || '文档查看器';
+            
+            // 更新页面标题和文档标题
+            document.title = title;
+            document.getElementById('document-title').textContent = title;
+            
+            // 设置返回链接
+            const backBtn = document.getElementById('back-btn');
+            const referrer = document.referrer;
+            if (referrer && referrer.includes(window.location.origin)) {
+                backBtn.href = referrer;
+            } else {
+                backBtn.href = '/';
+            }
+            
+            // 如果没有指定文档，显示错误信息
+            if (!docFile) {
+                document.getElementById('document-content').innerHTML = '<p>未指定要查看的文档。</p>';
+                return;
+            }
+            
+            // 加载文档内容
+            fetch('/docs/' + docFile)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('文档加载失败');
+                    }
+                    return response.text();
+                })
+                .then(text => {
+                    // 使用简单的Markdown转HTML函数
+                    const html = convertMarkdownToHtml(text);
+                    document.getElementById('document-content').innerHTML = html;
+                })
+                .catch(error => {
+                    document.getElementById('document-content').innerHTML = 
+                        '<p>文档加载失败: ' + error.message + '</p>';
+                });
+        }
+
+        // 简单的Markdown转HTML函数
+        function convertMarkdownToHtml(markdown) {
+            let html = markdown;
+            
+            // 转换代码块 (```code```)
+            html = html.replace(/```([\s\S]*?)```/g, function(match, code) {
+                return '<pre><code>' + escapeHtml(code.trim()) + '</code></pre>';
+            });
+            
+            // 转换行内代码 (`code`)
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // 转换链接 [text](url)
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+            
+            // 转换粗体 **text**
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // 转换斜体 *text*
+            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            
+            // 转换引用块 > text
+            html = html.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>');
+            
+            // 转换三级标题 ### text
+            html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+            
+            // 转换二级标题 ## text
+            html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+            
+            // 转换一级标题 # text
+            html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+            
+            // 转换无序列表 - item
+            html = html.replace(/^- (.*$)/gm, '<li>$1</li>');
+            
+            // 将连续的<li>包装在<ul>中
+            html = html.replace(/(<li>.*<\/li>)+/gs, function(match) {
+                return '<ul>' + match + '</ul>';
+            });
+            
+            // 转换表格
+            html = html.replace(/^\|(.*)\|$/gm, function(match) {
+                const cells = match.slice(1, -1).split('|');
+                let row = '<tr>';
+                for (let cell of cells) {
+                    row += '<td>' + cell.trim() + '</td>';
+                }
+                row += '</tr>';
+                return row;
+            });
+            
+            // 将连续的<tr>包装在<table>中，并识别表头
+            html = html.replace(/(<tr>.*<\/tr>)+/gs, function(match) {
+                const rows = match.match(/<tr>.*?<\/tr>/g) || [];
+                if (rows.length > 0) {
+                    // 检查是否有分隔行（只包含 --- 或 :--- 等）
+                    let table = '<table>';
+                    let isHeaderProcessed = false;
+                    
+                    for (let i = 0; i < rows.length; i++) {
+                        // 如果是分隔行，跳过并标记下一行是表头
+                        if (rows[i].includes('---') && !isHeaderProcessed) {
+                            isHeaderProcessed = true;
+                            continue;
+                        }
+                        
+                        if (isHeaderProcessed && !rows[i].includes('---')) {
+                            // 将第一行数据作为表头
+                            table += rows[i].replace(/<td>/g, '<th>').replace(/<\/td>/g, '</th>');
+                            isHeaderProcessed = false; // 只处理一次
+                        } else {
+                            table += rows[i];
+                        }
+                    }
+                    table += '</table>';
+                    return table;
+                }
+                return '<table>' + match + '</table>';
+            });
+            
+            // 转换段落（处理剩余的文本行）
+            const lines = html.split('\n');
+            let result = '';
+            let inParagraph = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                // 跳过空行
+                if (line.trim() === '') {
+                    if (inParagraph) {
+                        result += '</p>';
+                        inParagraph = false;
+                    }
+                    continue;
+                }
+                
+                // 如果已经在一个段落中，添加换行
+                if (inParagraph) {
+                    result += ' ' + line;
+                } 
+                // 如果是标题、列表、代码块、表格、引用等，不作为段落处理
+                else if (!/^<(h[1-6]|ul|ol|li|pre|table|tr|td|th|blockquote)/.test(line)) {
+                    result += '<p>' + line;
+                    inParagraph = true;
+                } else {
+                    result += line;
+                }
+            }
+            
+            // 关闭最后一个段落
+            if (inParagraph) {
+                result += '</p>';
+            }
+            
+            return result;
+        }
+
+        // HTML转义函数
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // 页面加载完成后加载文档
+        document.addEventListener('DOMContentLoaded', loadDocument);
+    </script>
+</body>
+</html>

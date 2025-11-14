@@ -102,6 +102,9 @@ main {
     padding: 20px;
     border-radius: var(--border-radius);
     box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
 .calendar-header {
@@ -125,6 +128,7 @@ main {
     text-align: center;
     font-weight: bold;
     margin-bottom: 10px;
+    gap: 5px;
 }
 
 .calendar-days {
@@ -134,19 +138,79 @@ main {
 }
 
 .calendar-day {
-    aspect-ratio: 1;
+    aspect-ratio: 1.15;
+    min-height: 56px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    border-radius: 50%;
-    transition: all 0.3s ease;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    position: relative;
+    border: 1px solid #eee;
 }
 
 .calendar-day:hover {
-    background-color: var(--primary-color);
-    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
 }
+
+.calendar-day.today {
+    outline: 2px solid var(--primary-color);
+}
+
+.calendar-day.workday {
+    background-color: rgba(46, 204, 113, 0.08);
+}
+
+.calendar-day.weekend {
+    background-color: rgba(52, 152, 219, 0.08);
+}
+
+.calendar-day.workday-off {
+    background-color: rgba(231, 76, 60, 0.12);
+    color: #c0392b;
+}
+
+.calendar-day.weekend-work {
+    background-color: rgba(241, 196, 15, 0.15);
+    color: #8e6b00;
+}
+
+.holiday-label {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(231, 76, 60, 0.9);
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+
+.calendar-legend {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.legend-color {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    margin-right: 6px;
+}
+
+.legend-color.workday { background: rgba(46, 204, 113, 0.5); }
+.legend-color.weekend { background: rgba(52, 152, 219, 0.5); }
+.legend-color.workday-off { background: rgba(231, 76, 60, 0.6); }
+.legend-color.weekend-work { background: rgba(241, 196, 15, 0.7); }
+.legend-color.custom-holiday { background: rgba(155, 89, 182, 0.6); }
 
 /* 设置页面样式 */
 .settings-section {
@@ -238,7 +302,23 @@ button:hover {
 }
 
 .countdown-card:hover {
-    transform: translateY(-5px);
+    transform: none;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+
+.tooltip-card {
+    position: fixed;
+    z-index: 9999;
+    max-width: 360px;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 10px 12px;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    font-size: 12px;
+    line-height: 1.5;
+    pointer-events: none;
+    white-space: pre-wrap;
 }
 
 .countdown-card h3 {
@@ -501,6 +581,24 @@ footer {
 footer p {
     color: #666;
     font-size: 14px;
+}
+
+.documentation-links {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+    text-align: center;
+    font-size: 12px;
+}
+
+.documentation-links a {
+    color: var(--primary-color);
+    text-decoration: none;
+    margin: 0 5px;
+}
+
+.documentation-links a:hover {
+    text-decoration: underline;
 }
 
 /* 空状态提示 */
