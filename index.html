@@ -5,8 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>工作摸鱼神器</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="prompts.js"></script>
 </head>
 <body>
+    <!-- 侧边栏抽屉 -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>菜单</h2>
+            <button class="close-sidebar" id="close-sidebar">✕</button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-tab="countdown">
+                <span class="nav-icon">⏰</span>
+                <span class="nav-text">倒计时</span>
+            </a>
+            <a href="#" class="nav-item" data-tab="calendar">
+                <span class="nav-icon">📅</span>
+                <span class="nav-text">日历</span>
+            </a>
+            <a href="#" class="nav-item" data-tab="settings">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-text">设置</span>
+            </a>
+        </nav>
+    </div>
+    
+    <!-- 遮罩层 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    
+    <!-- 菜单按钮（页面左上角） -->
+    <button class="menu-toggle-fixed" id="menu-toggle">☰</button>
+    
     <div class="container">
         <header>
             <div class="header-content">
@@ -14,9 +43,55 @@
                     <h1>工作机器打鸣器</h1>
                     <p class="subtitle">距离下一个快乐时刻还有...</p>
                 </div>
-                <div class="current-time-container">当前时间: <div id="current-time" class="current-time"></div></div>
+                <div class="header-right">
+                    <button id="clock-in-btn" class="clock-in-btn-header">👋 上班打卡</button>
+                    <div class="current-time-container">当前时间: <div id="current-time" class="current-time"></div></div>
+                </div>
             </div>
         </header>
+        
+        <!-- 番茄钟模态窗口 -->
+        <div id="pomodoro-modal" class="modal">
+            <div class="modal-content pomodoro-modal-content">
+                <div class="modal-header">
+                    <h2>🍅 番茄钟</h2>
+                    <button class="close-modal" id="close-pomodoro">✕</button>
+                </div>
+                <div class="pomodoro-body">
+                    <div class="pomodoro-timer-display" id="pomodoro-timer">25:00</div>
+                    <div class="pomodoro-controls" id="pomodoro-setup">
+                        <h3>设置专注时长</h3>
+                        <div class="quick-select">
+                            <button class="quick-btn" data-minutes="15">15分钟</button>
+                            <button class="quick-btn" data-minutes="30">30分钟</button>
+                            <button class="quick-btn" data-minutes="45">45分钟</button>
+                            <button class="quick-btn" data-minutes="60">60分钟</button>
+                        </div>
+                        <div class="custom-time-input">
+                            <label for="custom-minutes">自定义时长（分钟）:</label>
+                            <input type="number" id="custom-minutes" min="1" max="120" value="25">
+                        </div>
+                        <button id="start-pomodoro" class="primary-btn">开始专注</button>
+                    </div>
+                    <div class="pomodoro-controls" id="pomodoro-running" style="display: none;">
+                        <button id="cancel-pomodoro" class="cancel-btn">取消专注</button>
+                    </div>
+                    <div class="pomodoro-controls" id="pomodoro-complete" style="display: none;">
+                        <div class="complete-message" id="complete-message"></div>
+                        <button id="restart-pomodoro" class="primary-btn">再来一次</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 打卡问候弹窗 -->
+        <div id="greeting-modal" class="modal">
+            <div class="modal-content greeting-modal-content">
+                <div class="greeting-message" id="greeting-message"></div>
+                <div class="greeting-error" id="greeting-error"></div>
+                <div class="greeting-countdown" id="greeting-countdown"></div>
+            </div>
+        </div>
         
         <div id="setup-modal" class="modal">
             <div class="modal-content">
@@ -54,11 +129,6 @@
         </div>
         
         <main>
-            <div class="tabs">
-                <button class="tab-btn active" data-tab="countdown">倒计时</button>
-                <button class="tab-btn" data-tab="calendar">日历</button>
-                <button class="tab-btn" data-tab="settings">设置</button>
-            </div>
             
             <div id="countdown" class="tab-content active">
                 <div class="main-countdown">
@@ -92,7 +162,7 @@
                 </div>
                 
                 <!-- 存钱罐进度条 -->
-                <div class="progress-section">
+                <div class="progress-section" id="progress-section-card">
                     <h2>工资进度</h2>
                     <div class="progress-container">
                         <div class="progress-bar">
@@ -100,6 +170,11 @@
                         </div>
                         <div class="progress-text" id="progress-text"></div>
                     </div>
+                </div>
+                
+                <!-- 番茄钟入口按钮 -->
+                <div class="pomodoro-entry">
+                    <button id="open-pomodoro" class="pomodoro-btn">🍅 开启番茄钟</button>
                 </div>
                 
                 <h2>其他假期</h2>
@@ -133,6 +208,7 @@
                         <div><span class="legend-color workday-off"></span> 公休假期</div>
                         <div><span class="legend-color weekend-work"></span> 串休上班日</div>
                         <div><span class="legend-color custom-holiday"></span> 自定义假期</div>
+                        <div><span class="legend-color salary-day"></span> 发薪日</div>
                     </div>
                 </div>
             </div>
@@ -202,6 +278,20 @@
                     </div>
                 </div>
                 
+                <div class="settings-section ai-settings">
+                    <h2>AI功能设置</h2>
+                    <div class="form-group">
+                        <label for="ai-api-key">DeepSeek API 密钥:</label>
+                        <input type="password" id="ai-api-key" placeholder="输入你的 DeepSeek API Key">
+                        <button id="toggle-api-key" style="margin-left: 10px;">👁️</button>
+                    </div>
+                    <div class="form-group">
+                        <button id="save-api-key">保存 API 密钥</button>
+                        <button id="test-api-key" style="margin-left: 10px;">测试连接</button>
+                    </div>
+                    <div class="api-status" id="api-status"></div>
+                </div>
+                
                 <div class="custom-events">
                 <h2>自定义事件</h2>
                 <div class="form-group">
@@ -233,7 +323,8 @@
                 <a href="docs/viewer.html?doc=product_document.md" target="_self">产品文档</a> | 
                 <a href="docs/viewer.html?doc=prompt_document.md" target="_self">Prompt指令文档</a> | 
                 <a href="docs/viewer.html?doc=development_log.md" target="_self">开发日志</a> | 
-                <a href="docs/viewer.html?doc=user_manual.md" target="_self">用户手册</a>
+                <a href="docs/viewer.html?doc=user_manual.md" target="_self">用户手册</a> | 
+                <a href="https://mrmiracle1.github.io/xinliu_diary/" target="_blank">心流日记</a>
             </div>
         </footer>
     </div>
