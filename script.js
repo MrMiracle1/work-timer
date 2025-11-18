@@ -12,79 +12,6 @@ let activeTab = 'countdown';
 let developerMode = localStorage.getItem('developerMode') === 'true' || false;
 let customTime = localStorage.getItem('customTime') || null;
 
-// ==================== AI 功能模块 ====================
-// DeepSeek API 配置
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
-const DEEPSEEK_MODEL = 'deepseek-chat';
-
-// 调用 DeepSeek API
-async function callDeepSeekAPI(prompt) {
-    const apiKey = localStorage.getItem('deepseekApiKey');
-    
-    if (!apiKey) {
-        throw new Error('未配置 API 密钥');
-    }
-    
-    try {
-        const response = await fetch(DEEPSEEK_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: DEEPSEEK_MODEL,
-                messages: [
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ],
-                temperature: 1.2,  // 提高温度增加随机性
-                max_tokens: 100,
-                top_p: 0.95  // 增加多样性
-            })
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error?.message || `API 请求失败: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        return data.choices[0].message.content.trim();
-    } catch (error) {
-        console.error('DeepSeek API 调用失败:', error);
-        throw error;
-    }
-}
-
-// 获取 AI 问候语（带兰底）
-async function getAIGreeting(type) {
-    try {
-        const prompt = AI_PROMPTS[type];
-        if (!prompt) {
-            throw new Error('无效的问候类型');
-        }
-        
-        const greeting = await callDeepSeekAPI(prompt);
-        return {
-            success: true,
-            message: greeting,
-            isAI: true
-        };
-    } catch (error) {
-        console.error('AI 问候语获取失败:', error);
-        return {
-            success: false,
-            message: getRandomFallbackMessage(type),
-            isAI: false,
-            error: error.message
-        };
-    }
-}
-// ==================== AI 功能模块结束 ====================
-
 // 工作时间配置
 let workTimeConfig = {
     startHour: parseInt(workStartTime.split(':')[0]),
@@ -490,7 +417,7 @@ function initAISettings() {
         statusDiv.innerHTML = '<span style="color: blue;">⏳ 正在测试连接...</span>';
         
         try {
-            const result = await getAIGreeting('CLOCK_IN');
+            const result = await window.AIModule.getAIGreeting('CLOCK_IN');
             if (result.success) {
                 statusDiv.innerHTML = '<span style="color: green;">✅ 连接成功！AI 回复: ' + result.message + '</span>';
             } else {
@@ -562,7 +489,7 @@ function initClockIn() {
         document.body.style.overflow = 'hidden';
         
         // 调用 AI 获取问候语
-        const result = await getAIGreeting(type);
+        const result = await window.AIModule.getAIGreeting(type);
         
         greetingMessage.textContent = result.message;
         
@@ -1312,7 +1239,7 @@ function renderOtherHolidays(sortedEvents) {
         
         // 添加点击事件
         card.addEventListener('click', () => {
-            showToast('马上下班啦，加油！！');
+            showToast('准备休假，想好去哪儿玩了吗？');
         });
         
         container.appendChild(card);
@@ -1691,7 +1618,8 @@ function getTimeRemaining(targetDate, event) {
 
         // 基于工作时间计算剩余时间
         const days = Math.floor(totalWorkTime / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((totalWorkTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const remainingMillis = totalWorkTime % (1000 * 60 * 60 * 24);
+        const hours = days * 24 + Math.floor(remainingMillis / (1000 * 60 * 60));
         const minutes = Math.floor((totalWorkTime % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((totalWorkTime % (1000 * 60)) / 1000);
 
@@ -2268,7 +2196,25 @@ function bindMainCardEvents() {
     cards.forEach(card => {
         if (!card || card.dataset.bound === 'true') return;
         card.addEventListener('click', () => {
-            showToast('马上下班啦，加油！！');
+            // 根据不同卡片显示不同的提示文案
+            const cardId = card.id;
+            let message = '马上下班啦，加油！！'; // 默认文案
+            
+            if (cardId === 'weekend-card') {
+                message = '努力熬一熬，马上周末啦！';
+            } else if (cardId === 'salary-day-card') {
+                message = '这个月的工资怎么花呢？';
+            } else if (cardId === 'next-holiday-card') {
+                // 判断是午休还是节假日
+                const titleElement = card.querySelector('h3');
+                if (titleElement && titleElement.textContent === '午休倒计时') {
+                    message = '准备开饭！';
+                } else {
+                    message = '准备休假，想好去哪儿玩了吗？';
+                }
+            }
+            
+            showToast(message);
         });
         card.addEventListener('mouseenter', () => {
             const id = card.id;

@@ -6,6 +6,7 @@
     <title>工作摸鱼神器</title>
     <link rel="stylesheet" href="styles.css">
     <script src="prompts.js"></script>
+    <script src="ai-module.js"></script>
 </head>
 <body>
     <!-- 侧边栏抽屉 -->
@@ -22,6 +23,14 @@
             <a href="#" class="nav-item" data-tab="calendar">
                 <span class="nav-icon">📅</span>
                 <span class="nav-text">日历</span>
+            </a>
+            <a href="#" class="nav-item" data-tab="rmrb">
+                <span class="nav-icon">📰</span>
+                <span class="nav-text">人民日报</span>
+            </a>
+            <a href="#" class="nav-item" data-tab="surf">
+                <span class="nav-icon">🏄</span>
+                <span class="nav-text">网上冲浪</span>
             </a>
             <a href="#" class="nav-item" data-tab="settings">
                 <span class="nav-icon">⚙️</span>
@@ -213,6 +222,14 @@
                 </div>
             </div>
             
+            <div id="rmrb" class="tab-content">
+                <iframe src="rmrb/index.html" class="rmrb-iframe"></iframe>
+            </div>
+            
+            <div id="surf" class="tab-content">
+                <iframe src="surf/index.html" class="surf-iframe"></iframe>
+            </div>
+            
             <div id="settings" class="tab-content">
                 <div class="settings-section">
                     <h2>用户设置</h2>
@@ -316,6 +333,8 @@
             <div class="footer-tabs">
                 <div class="footer-tab active" data-tab="countdown">倒计时</div>
                 <div class="footer-tab" data-tab="calendar">日历</div>
+                <div class="footer-tab" data-tab="rmrb">人民日报</div>
+                <div class="footer-tab" data-tab="surf">网上冲浪</div>
                 <div class="footer-tab" data-tab="settings">设置</div>
             </div>
             <p>数据保存在本地浏览器中 | 摸鱼愉快 😎</p>

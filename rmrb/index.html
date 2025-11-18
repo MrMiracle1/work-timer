@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人民日报阅读</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="../prompts.js"></script>
+    <script src="../ai-module.js"></script>
+</head>
+<body>
+    <div class="rmrb-container">
+        <header class="rmrb-header">
+            <h1>📰 人民日报</h1>
+            <div class="rmrb-controls">
+                <input type="date" id="news-date" class="date-picker">
+                <button id="refresh-news" class="refresh-btn">🔄 刷新</button>
+                <button id="ai-analysis-btn" class="ai-analysis-btn">🤖 AI读报</button>
+            </div>
+        </header>
+        
+        <!-- 加载提示 -->
+        <div id="loading-container" class="loading-container">
+            <div class="loading-spinner"></div>
+            <div id="loading-message" class="loading-message">正在加载...</div>
+        </div>
+        
+        <!-- 文章列表 -->
+        <main class="rmrb-main">
+            <div id="article-list" class="article-list">
+                <!-- 文章列表将通过 JS 动态生成 -->
+            </div>
+        </main>
+        
+        <!-- 文章阅读模态框 -->
+        <div id="article-modal" class="article-modal">
+            <div class="article-modal-content">
+                <div class="article-modal-header">
+                    <h2 id="article-modal-title"></h2>
+                    <button id="close-article-modal" class="close-modal-btn">✕</button>
+                </div>
+                <div id="article-modal-content" class="article-modal-body"></div>
+            </div>
+        </div>
+        
+        <!-- AI 读报模态框 -->
+        <div id="ai-analysis-modal" class="article-modal">
+            <div class="article-modal-content ai-modal-content">
+                <div class="article-modal-header">
+                    <h2>🤖 AI 读报分析</h2>
+                    <button id="close-ai-modal" class="close-modal-btn">✕</button>
+                </div>
+                <div id="ai-analysis-content" class="article-modal-body ai-analysis-body"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

@@ -232,6 +232,26 @@ main {
     display: block;
 }
 
+/* 人民日报 iframe 样式 */
+.rmrb-iframe {
+    width: 100%;
+    height: calc(100vh - 200px);
+    min-height: 600px;
+    border: none;
+    border-radius: var(--border-radius);
+    background: white;
+}
+
+/* 网上冲浪 iframe 样式 */
+.surf-iframe {
+    width: 100%;
+    height: calc(100vh - 200px);
+    min-height: 600px;
+    border: none;
+    border-radius: var(--border-radius);
+    background: white;
+}
+
 /* 日历页面样式 */
 .calendar-container {
     background-color: var(--card-background);

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网上冲浪</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="surf-container">
+        <header class="surf-header">
+            <h1>🏄 网上冲浪</h1>
+            <p class="subtitle">实时热搜榜单</p>
+        </header>
+        
+        <!-- 热搜榜单区域 -->
+        <main class="surf-main">
+            <!-- 微博热搜 -->
+            <div class="hot-list-section">
+                <div class="section-header">
+                    <h2>🔥 微博热搜</h2>
+                    <button id="refresh-weibo" class="refresh-btn">🔄 刷新</button>
+                </div>
+                <div id="weibo-loading" class="loading-container" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-message">加载中...</div>
+                </div>
+                <div id="weibo-list" class="hot-list">
+                    <!-- 微博热搜列表将通过 JS 动态生成 -->
+                </div>
+            </div>
+            
+            <!-- 抖音热搜 -->
+            <div class="hot-list-section">
+                <div class="section-header">
+                    <h2>📱 抖音热搜</h2>
+                    <button id="refresh-douyin" class="refresh-btn">🔄 刷新</button>
+                </div>
+                <div id="douyin-loading" class="loading-container" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-message">加载中...</div>
+                </div>
+                <div id="douyin-list" class="hot-list">
+                    <!-- 抖音热搜列表将通过 JS 动态生成 -->
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
