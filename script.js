@@ -12,6 +12,40 @@ let activeTab = 'countdown';
 let developerMode = localStorage.getItem('developerMode') === 'true' || false;
 let customTime = localStorage.getItem('customTime') || null;
 
+// 时间轴数据结构
+let todayTimeline = [];
+
+// 加载今日时间轴
+function loadTodayTimeline() {
+    const today = new Date().toDateString();
+    const savedTimeline = localStorage.getItem(`timeline_${today}`);
+    if (savedTimeline) {
+        todayTimeline = JSON.parse(savedTimeline);
+    } else {
+        todayTimeline = [];
+    }
+}
+
+// 保存今日时间轴
+function saveTodayTimeline() {
+    const today = new Date().toDateString();
+    localStorage.setItem(`timeline_${today}`, JSON.stringify(todayTimeline));
+}
+
+// 添加时间轴事件
+function addTimelineEvent(type, content, extraData = {}) {
+    const event = {
+        id: Date.now(),
+        time: new Date(),
+        type: type, // 'clock-in', 'clock-out', 'relax', 'pomodoro', etc.
+        content: content,
+        ...extraData
+    };
+    todayTimeline.push(event);
+    saveTodayTimeline();
+    return event;
+}
+
 // 工作时间配置
 let workTimeConfig = {
     startHour: parseInt(workStartTime.split(':')[0]),
@@ -59,6 +93,9 @@ function getCurrentTime() {
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', () => {
+    // 加载今日时间轴
+    loadTodayTimeline();
+    
     // 检查是否首次使用
     if (!localStorage.getItem('hasVisited')) {
         showSetupModal();
@@ -80,6 +117,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 初始化打卡功能
     initClockIn();
+    
+    // 初始化时间轴
+    initTimeline();
+    
+    // 初始化AI指令控制
+    initCommandControl();
+    
+    // 初始化快捷功能
+    initShortcuts();
+    
+    // 初始化日历事件功能
+    initCalendarEvents();
     
     // 设置按钮事件
     document.getElementById('add-event').addEventListener('click', addCustomEvent);
@@ -341,16 +390,22 @@ function completePomodoro() {
     const minutes = totalMinutes % 60;
     
     let message = '恭喜完成，本次专注了';
+    let duration = '';
     if (hours > 0) {
         message += `${hours}小时`;
+        duration += `${hours}小时`;
     }
     if (minutes > 0) {
         message += `${minutes}分钟`;
+        duration += `${minutes}分钟`;
     }
     
     document.getElementById('complete-message').textContent = message;
     document.getElementById('pomodoro-running').style.display = 'none';
     document.getElementById('pomodoro-complete').style.display = 'block';
+    
+    // 添加时间轴事件
+    addTimelineEvent('pomodoro', `完成了 ${duration} 的番茄钟`, { duration: totalMinutes });
     
     showToast(message);
 }
@@ -437,33 +492,46 @@ function initAISettings() {
 function initClockIn() {
     const clockInBtn = document.getElementById('clock-in-btn');
     const greetingModal = document.getElementById('greeting-modal');
-    let lastClockInType = localStorage.getItem('lastClockInType') || null;
+    const closeGreetingBtn = document.getElementById('close-greeting-modal');
     
     // 更新按钮状态
     function updateClockInButton() {
-        const now = getCurrentTime();
-        const currentHour = now.getHours();
-        const [startHour] = workStartTime.split(':').map(Number);
-        const [endHour] = workEndTime.split(':').map(Number);
+        const today = new Date().toDateString();
+        const lastClockInType = localStorage.getItem('lastClockInType') || null;
+        const lastClockInDate = localStorage.getItem('lastClockInDate') || null;
         
-        // 判断当前是否应该显示上班还是下班
-        if (currentHour < startHour + 2) {
-            // 上班时间附近（上班后2小时内）
+        // 如果不是同一天，重置为上班打卡
+        if (lastClockInDate !== today) {
             clockInBtn.textContent = '👋 上班打卡';
             clockInBtn.dataset.type = 'CLOCK_IN';
-        } else if (currentHour >= endHour - 1) {
-            // 下班时间附近（下班前1小时）
+            clockInBtn.disabled = false;
+            clockInBtn.style.opacity = '1';
+            clockInBtn.style.cursor = 'pointer';
+            return;
+        }
+        
+        // 同一天的逻辑
+        if (lastClockInType === 'CLOCK_IN') {
+            // 已经上班打卡，显示下班打卡
             clockInBtn.textContent = '👋 下班打卡';
             clockInBtn.dataset.type = 'CLOCK_OUT';
+            clockInBtn.disabled = false;
+            clockInBtn.style.opacity = '1';
+            clockInBtn.style.cursor = 'pointer';
+        } else if (lastClockInType === 'CLOCK_OUT') {
+            // 已经下班打卡，显示灰色按钮
+            clockInBtn.textContent = '✅ 已下班';
+            clockInBtn.dataset.type = 'FINISHED';
+            clockInBtn.disabled = false; // 仍然可点击，但显示总结
+            clockInBtn.style.opacity = '0.6';
+            clockInBtn.style.cursor = 'pointer';
         } else {
-            // 中间时间段，根据上次打卡类型决定
-            if (lastClockInType === 'CLOCK_IN') {
-                clockInBtn.textContent = '👋 下班打卡';
-                clockInBtn.dataset.type = 'CLOCK_OUT';
-            } else {
-                clockInBtn.textContent = '👋 上班打卡';
-                clockInBtn.dataset.type = 'CLOCK_IN';
-            }
+            // 新的一天，默认上班打卡
+            clockInBtn.textContent = '👋 上班打卡';
+            clockInBtn.dataset.type = 'CLOCK_IN';
+            clockInBtn.disabled = false;
+            clockInBtn.style.opacity = '1';
+            clockInBtn.style.cursor = 'pointer';
         }
     }
     
@@ -477,14 +545,52 @@ function initClockIn() {
     clockInBtn.addEventListener('click', async () => {
         const type = clockInBtn.dataset.type;
         
+        // 如果是已下班状态，直接显示总结
+        if (type === 'FINISHED') {
+            const greetingMessage = document.getElementById('greeting-message');
+            const greetingError = document.getElementById('greeting-error');
+            const greetingCountdown = document.getElementById('greeting-countdown');
+            const clockInNoteSection = document.getElementById('clock-in-note-section');
+            const clockOutSummary = document.getElementById('clock-out-summary');
+            
+            greetingMessage.textContent = '🎉 今日工作已结束';
+            greetingError.textContent = '';
+            greetingCountdown.textContent = '';
+            clockInNoteSection.style.display = 'none';
+            clockOutSummary.style.display = 'block';
+            greetingModal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            // 显示总结
+            const summary = generateDailySummary();
+            document.getElementById('summary-content').innerHTML = summary;
+            
+            // 设置关闭事件
+            const closeModal = () => {
+                greetingModal.classList.remove('show');
+                document.body.style.overflow = '';
+            };
+            
+            closeGreetingBtn.onclick = closeModal;
+            greetingModal.onclick = (e) => {
+                if (e.target === greetingModal) closeModal();
+            };
+            
+            return;
+        }
+        
         // 显示加载中
         const greetingMessage = document.getElementById('greeting-message');
         const greetingError = document.getElementById('greeting-error');
         const greetingCountdown = document.getElementById('greeting-countdown');
+        const clockInNoteSection = document.getElementById('clock-in-note-section');
+        const clockOutSummary = document.getElementById('clock-out-summary');
         
         greetingMessage.textContent = '正在生成问候语...';
         greetingError.textContent = '';
         greetingCountdown.textContent = '';
+        clockInNoteSection.style.display = 'none';
+        clockOutSummary.style.display = 'none';
         greetingModal.classList.add('show');
         document.body.style.overflow = 'hidden';
         
@@ -497,12 +603,64 @@ function initClockIn() {
             greetingError.textContent = `AI 调用失败: ${result.error}`;
         }
         
-        // 保存打卡类型
-        lastClockInType = type;
-        localStorage.setItem('lastClockInType', type);
+        // 记录打卡时间
+        const now = new Date();
+        const today = now.toDateString();
+        const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
         
-        // 更新按钮状态
-        updateClockInButton();
+        if (type === 'CLOCK_IN') {
+            // 上班打卡：显示留言输入区
+            clockInNoteSection.style.display = 'block';
+            
+            // 添加时间轴事件
+            localStorage.setItem(`clockInTime_${today}`, now.toISOString());
+            
+            // AI生成鼓励按钮
+            document.getElementById('generate-ai-note').onclick = async () => {
+                const noteTextarea = document.getElementById('daily-note');
+                noteTextarea.value = '正在生成...';
+                
+                const aiResult = await window.AIModule.callDeepSeekAPI(
+                    '请生成一句简短的工作鼓励语，帮助用户开启美好的一天，不超过50字。',
+                    { maxTokens: 100 }
+                );
+                noteTextarea.value = aiResult;
+            };
+            
+            // 保存留言按钮
+            document.getElementById('save-daily-note').onclick = () => {
+                const note = document.getElementById('daily-note').value;
+                if (note.trim()) {
+                    addTimelineEvent('clock-in', `上班打卡 ${timeStr}`, { note: note });
+                    // 保存留言到 localStorage
+                    localStorage.setItem(`dailyNote_${today}`, note);
+                    showToast('留言已保存！');
+                    // 显示留言卡片
+                    displayDailyNote(note);
+                } else {
+                    addTimelineEvent('clock-in', `上班打卡 ${timeStr}`);
+                }
+                // 保存打卡类型和日期
+                localStorage.setItem('lastClockInType', type);
+                localStorage.setItem('lastClockInDate', today);
+                updateClockInButton();
+                greetingModal.classList.remove('show');
+                document.body.style.overflow = '';
+            };
+        } else {
+            // 下班打卡：生成今日统计报告
+            clockOutSummary.style.display = 'block';
+            const summary = generateDailySummary();
+            document.getElementById('summary-content').innerHTML = summary;
+            
+            // 添加时间轴事件
+            addTimelineEvent('clock-out', `下班打卡 ${timeStr}`);
+            
+            // 保存打卡类型和日期
+            localStorage.setItem('lastClockInType', type);
+            localStorage.setItem('lastClockInDate', today);
+            updateClockInButton();
+        }
         
         // 10秒倒计时关闭
         let countdown = 10;
@@ -519,6 +677,13 @@ function initClockIn() {
             }
         }, 1000);
         
+        // 点击关闭按钮
+        closeGreetingBtn.onclick = () => {
+            clearInterval(countdownInterval);
+            greetingModal.classList.remove('show');
+            document.body.style.overflow = '';
+        };
+        
         // 点击弹窗外部关闭
         greetingModal.onclick = (e) => {
             if (e.target === greetingModal) {
@@ -527,6 +692,307 @@ function initClockIn() {
                 document.body.style.overflow = '';
             }
         };
+    });
+    
+    // 初始化时更新按钮状态
+    updateClockInButton();
+}
+
+// 生成今日统计报告
+function generateDailySummary() {
+    const today = new Date().toDateString();
+    const clockInTime = localStorage.getItem(`clockInTime_${today}`);
+    
+    // 统计摸鱼次数（点击卡片事件）
+    const relaxEvents = todayTimeline.filter(e => e.type === 'relax');
+    const morningRelax = relaxEvents.filter(e => {
+        const hour = new Date(e.time).getHours();
+        return hour < 12;
+    });
+    const afternoonRelax = relaxEvents.filter(e => {
+        const hour = new Date(e.time).getHours();
+        return hour >= 12;
+    });
+    
+    let summary = '<h3>📋 今日工作总结</h3>';
+    
+    if (clockInTime) {
+        const clockIn = new Date(clockInTime);
+        const clockInStr = clockIn.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        summary += `<p>🌅 今天 ${clockInStr} 开始了一天的工作。</p>`;
+    }
+    
+    const now = new Date();
+    const clockOutStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    summary += `<p>🌆 现在是 ${clockOutStr}，辛苦了一天！</p>`;
+    
+    if (relaxEvents.length > 0) {
+        summary += `<p>🎉 今天总共摸鱼了 <strong>${relaxEvents.length}</strong> 次，`;
+        if (morningRelax.length > 0) {
+            summary += `上午摸鱼 ${morningRelax.length} 次，`;
+        }
+        if (afternoonRelax.length > 0) {
+            summary += `下午摸鱻 ${afternoonRelax.length} 次`;
+        }
+        summary += `。放松也是为了更好地工作！</p>`;
+    } else {
+        summary += `<p>💪 今天工作很专注，没有摸鱼记录。给你点赞！</p>`;
+    }
+    
+    summary += `<p>✨ 下班后好好休息，明天继续加油！</p>`;
+    
+    return summary;
+}
+
+// 显示今日留言条（简洁版）
+function displayDailyNote(note) {
+    const dailyNoteBanner = document.getElementById('daily-note-banner');
+    const dailyNoteBannerContent = document.getElementById('daily-note-banner-content');
+    
+    if (note && note.trim()) {
+        dailyNoteBannerContent.textContent = note;
+        dailyNoteBanner.style.display = 'block';
+    } else {
+        dailyNoteBanner.style.display = 'none';
+    }
+}
+
+// 初始化时加载今日留言
+function loadDailyNote() {
+    const today = new Date().toDateString();
+    const note = localStorage.getItem(`dailyNote_${today}`);
+    if (note) {
+        displayDailyNote(note);
+    }
+}
+
+// 初始化时间轴
+function initTimeline() {
+    const openTimelineBtn = document.getElementById('open-timeline');
+    const timelineModal = document.getElementById('timeline-modal');
+    const closeTimelineBtn = document.getElementById('close-timeline');
+    
+    // 打开时间轴
+    openTimelineBtn.addEventListener('click', () => {
+        showTimeline();
+        timelineModal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    });
+    
+    // 关闭时间轴
+    closeTimelineBtn.addEventListener('click', () => {
+        timelineModal.classList.remove('show');
+        document.body.style.overflow = '';
+    });
+    
+    // 点击外部关闭
+    timelineModal.addEventListener('click', (e) => {
+        if (e.target === timelineModal) {
+            timelineModal.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+    });
+}
+
+// 显示时间轴
+function showTimeline() {
+    const timelineDateEl = document.getElementById('timeline-date');
+    const timelineListEl = document.getElementById('timeline-list');
+    const timelineEmptyEl = document.getElementById('timeline-empty');
+    
+    // 显示日期
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
+    });
+    timelineDateEl.textContent = dateStr;
+    
+    // 按时间顺序排序
+    const sortedEvents = [...todayTimeline].sort((a, b) => {
+        return new Date(a.time) - new Date(b.time);
+    });
+    
+    if (sortedEvents.length === 0) {
+        timelineListEl.style.display = 'none';
+        timelineEmptyEl.style.display = 'block';
+        return;
+    }
+    
+    timelineListEl.style.display = 'block';
+    timelineEmptyEl.style.display = 'none';
+    
+    // 渲染时间轴项
+    timelineListEl.innerHTML = sortedEvents.map(event => {
+        const time = new Date(event.time);
+        const timeStr = time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        
+        let typeClass = '';
+        let typeName = '';
+        
+        switch(event.type) {
+            case 'clock-in':
+                typeClass = 'event-type-clock-in';
+                typeName = '上班打卡';
+                break;
+            case 'clock-out':
+                typeClass = 'event-type-clock-out';
+                typeName = '下班打卡';
+                break;
+            case 'relax':
+                typeClass = 'event-type-relax';
+                typeName = '摸鱼一下';
+                break;
+            case 'pomodoro':
+                typeClass = 'event-type-pomodoro';
+                typeName = '番茄钟';
+                break;
+            default:
+                typeClass = '';
+                typeName = event.type;
+        }
+        
+        let contentHtml = `<div class="timeline-event-type ${typeClass}">${typeName}</div>`;
+        contentHtml += event.content;
+        
+        if (event.note) {
+            contentHtml += `<div class="timeline-event-content">📝 ${event.note}</div>`;
+        }
+        
+        return `
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-time">${timeStr}</div>
+                <div class="timeline-event">
+                    ${contentHtml}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 初始化快捷功能
+function initShortcuts() {
+    const toggleBtn = document.getElementById('toggle-shortcuts');
+    const shortcutsPanel = document.getElementById('shortcuts-panel');
+    
+    if (toggleBtn && shortcutsPanel) {
+        toggleBtn.addEventListener('click', () => {
+            const isVisible = shortcutsPanel.style.display === 'flex';
+            shortcutsPanel.style.display = isVisible ? 'none' : 'flex';
+        });
+    }
+}
+
+// 初始化AI助手（悬浮窗版）
+function initCommandControl() {
+    const aiFloatToggle = document.getElementById('ai-float-toggle');
+    const aiFloatPanel = document.getElementById('ai-float-panel');
+    const aiFloatClose = document.getElementById('ai-float-close');
+    const aiFloatInput = document.getElementById('ai-float-input');
+    const aiFloatSend = document.getElementById('ai-float-send');
+    const aiFloatMessages = document.getElementById('ai-float-messages');
+    const aiFloatStatus = document.getElementById('ai-float-status');
+    
+    if (!aiFloatToggle || !aiFloatPanel || !aiFloatInput || !aiFloatSend) {
+        console.warn('AI助手元素未找到');
+        return;
+    }
+    
+    // 切换悬浮窗显示
+    aiFloatToggle.addEventListener('click', () => {
+        const isVisible = aiFloatPanel.style.display === 'flex';
+        aiFloatPanel.style.display = isVisible ? 'none' : 'flex';
+    });
+    
+    // 关闭悬浮窗
+    aiFloatClose.addEventListener('click', () => {
+        aiFloatPanel.style.display = 'none';
+    });
+    
+    // 添加消息到聊天记录
+    function addMessage(text, type = 'user') {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `ai-message ${type}`;
+        messageDiv.textContent = text;
+        aiFloatMessages.appendChild(messageDiv);
+        
+        // 滚动到底部
+        aiFloatMessages.scrollTop = aiFloatMessages.scrollHeight;
+    }
+    
+    // 显示执行状态
+    function showStatus(message, type = 'info') {
+        aiFloatStatus.textContent = message;
+        aiFloatStatus.className = `ai-float-status ${type}`;
+        aiFloatStatus.style.display = 'block';
+        
+        // 3秒后自动隐藏
+        setTimeout(() => {
+            aiFloatStatus.style.display = 'none';
+        }, 3000);
+    }
+    
+    // 点击发送按钮
+    aiFloatSend.addEventListener('click', async () => {
+        const command = aiFloatInput.value.trim();
+        if (!command) {
+            showToast('请输入内容');
+            return;
+        }
+        
+        // 显示用户消息
+        addMessage(command, 'user');
+        aiFloatInput.value = '';
+        
+        // 检查是否配置API Key
+        const apiKey = localStorage.getItem('deepseekApiKey');
+        if (!apiKey) {
+            addMessage('请先在设置中配置DeepSeek API Key', 'system');
+            showToast('请先在设置中配置DeepSeek API Key', 'error');
+            setTimeout(() => {
+                switchTab('settings');
+            }, 1500);
+            return;
+        }
+        
+        // 禁用按钮
+        aiFloatSend.disabled = true;
+        aiFloatSend.textContent = '思考中...';
+        
+        try {
+            // 调用指令处理模块（带意图判断）
+            const result = await window.CommandModule.processCommand(command);
+            
+            // 显示AI回复
+            if (result.chatResponse) {
+                addMessage(result.chatResponse, 'assistant');
+            }
+            
+            // 显示执行状态
+            if (result.executed) {
+                showStatus(`✅ 已执行：${result.actionName}`, 'success');
+            } else if (result.lowConfidence) {
+                showStatus('💬 理解为：聊天模式', 'info');
+            }
+        } catch (error) {
+            console.error('处理失败:', error);
+            addMessage('抱歉，出了点问题：' + error.message, 'system');
+            showStatus('❌ 执行失败', 'error');
+        } finally {
+            // 恢复按钮状态
+            aiFloatSend.disabled = false;
+            aiFloatSend.textContent = '发送';
+        }
+    });
+    
+    // 支持回车键提交
+    aiFloatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            aiFloatSend.click();
+        }
     });
 }
 
@@ -623,6 +1089,9 @@ function initApp() {
         const storedW = localStorage.getItem('officialWeekendWorkdays');
         weekendWorkTextEl.value = storedW ? storedW : '';
     }
+    
+    // 加载今日留言
+    loadDailyNote();
 
     // 初始化开发者设置
     const developerModeCheckbox = document.getElementById('developer-mode');
@@ -649,8 +1118,51 @@ function initApp() {
         });
         
         customTimeInput.addEventListener('change', function() {
+            const oldTime = customTime;
             customTime = this.value ? new Date(this.value).toISOString() : null;
             localStorage.setItem('customTime', customTime);
+            
+            // 如果设置了新时间，检查是否是新的一天
+            if (customTime) {
+                const newDate = new Date(customTime).toDateString();
+                const today = new Date().toDateString();
+                const lastClockInDate = localStorage.getItem('lastClockInDate') || null;
+                
+                // 如果是不同的一天，清除打卡状态和时间轴
+                if (newDate !== lastClockInDate) {
+                    // 清除打卡状态
+                    localStorage.removeItem('lastClockInType');
+                    localStorage.removeItem('lastClockInDate');
+                    localStorage.removeItem(`clockInTime_${newDate}`);
+                    localStorage.removeItem(`dailyNote_${newDate}`);
+                    
+                    // 清除当天时间轴
+                    localStorage.removeItem(`timeline_${newDate}`);
+                    todayTimeline = [];
+                    
+                    // 重新加载时间轴数据（如果有）
+                    loadTodayTimeline();
+                    
+                    // 隐藏留言卡片
+                    const dailyNoteCard = document.getElementById('daily-note-card');
+                    if (dailyNoteCard) {
+                        dailyNoteCard.style.display = 'none';
+                    }
+                    
+                    // 更新打卡按钮状态
+                    const clockInBtn = document.getElementById('clock-in-btn');
+                    if (clockInBtn) {
+                        clockInBtn.textContent = '👋 上班打卡';
+                        clockInBtn.dataset.type = 'CLOCK_IN';
+                        clockInBtn.disabled = false;
+                        clockInBtn.style.opacity = '1';
+                        clockInBtn.style.cursor = 'pointer';
+                    }
+                    
+                    showToast('已重置为新的一天');
+                }
+            }
+            
             updateCountdowns();
         });
     }
@@ -2046,39 +2558,31 @@ function renderCalendar(month, year) {
             }
             dayElement.appendChild(salaryLabel);
         }
-        // 点击事件 - 切换假日/串休状态
+        // 检查是否有事件
+        const formattedDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        const eventsCount = getEventsCountForDate(formattedDateStr);
+        if (eventsCount > 0) {
+            dayElement.classList.add('has-event');
+        }
+        
+        // 点击事件 - 选择日期并显示事件
         dayElement.addEventListener('click', () => {
-            const dateStr = `${year}-${month + 1}-${i}`;
+            // 更新选中的日期
+            selectedDate = formattedDateStr;
             
-            if (dayOfWeek === 6 || dayOfWeek === 0) {
-                // 周末：在正常周末和串休上班日之间切换
-                if (dayElement.classList.contains('weekend-work')) {
-                    dayElement.classList.remove('weekend-work');
-                    dayElement.classList.add('weekend');
-                    delete weekendsWork[dateStr];
-                } else {
-                    dayElement.classList.remove('weekend');
-                    dayElement.classList.add('weekend-work');
-                    weekendsWork[dateStr] = true;
-                }
-                localStorage.setItem('weekendsWork', JSON.stringify(weekendsWork));
-            } else {
-                // 工作日：在正常工作日和公休假期之间切换
-                if (dayElement.classList.contains('workday-off')) {
-                    dayElement.classList.remove('workday-off');
-                    dayElement.classList.add('workday');
-                    delete workdaysOff[dateStr];
-                } else {
-                    dayElement.classList.remove('workday');
-                    dayElement.classList.add('workday-off');
-                    workdaysOff[dateStr] = true;
-                }
-                localStorage.setItem('workdaysOff', JSON.stringify(workdaysOff));
+            // 更新日期输入框
+            const eventDateInput = document.getElementById('calendar-event-date');
+            if (eventDateInput) {
+                eventDateInput.value = selectedDate;
             }
             
-            // 重新加载事件
-            addDefaultEvents();
-            renderEvents();
+            // 更新事件列表
+            updateTodayEventsList();
+            
+            // 显示反馈
+            const date = new Date(year, month, i);
+            const dateDisplay = `${month + 1}月${i}日`;
+            showToast(`已选择 ${dateDisplay}`);
         });
         calendarDays.appendChild(dayElement);
     }
@@ -2199,20 +2703,30 @@ function bindMainCardEvents() {
             // 根据不同卡片显示不同的提示文案
             const cardId = card.id;
             let message = '马上下班啦，加油！！'; // 默认文案
+            let cardName = '倒计时卡片';
             
-            if (cardId === 'weekend-card') {
+            if (cardId === 'workday-end-card') {
+                cardName = '下班倒计时';
+            } else if (cardId === 'weekend-card') {
                 message = '努力熬一熬，马上周末啦！';
+                cardName = '周末倒计时';
             } else if (cardId === 'salary-day-card') {
                 message = '这个月的工资怎么花呢？';
+                cardName = '发薪倒计时';
             } else if (cardId === 'next-holiday-card') {
                 // 判断是午休还是节假日
                 const titleElement = card.querySelector('h3');
                 if (titleElement && titleElement.textContent === '午休倒计时') {
                     message = '准备开饭！';
+                    cardName = '午休倒计时';
                 } else {
                     message = '准备休假，想好去哪儿玩了吗？';
+                    cardName = '节假日倒计时';
                 }
             }
+            
+            // 添加时间轴事件
+            addTimelineEvent('relax', `点击了「${cardName}」卡片`, { cardId: cardId });
             
             showToast(message);
         });
@@ -2230,3 +2744,243 @@ function bindMainCardEvents() {
         card.dataset.bound = 'true';
     });
 }
+
+// ==================== 日历事件管理功能 ====================
+
+// 全局变量
+let calendarEvents = [];
+let selectedDate = null;
+
+// 初始化日历事件功能
+function initCalendarEvents() {
+    // 加载事件数据
+    loadCalendarEvents();
+    
+    // 设置默认选中日期为今天
+    const today = new Date();
+    selectedDate = formatDate(today);
+    
+    // 初始化日期输入框
+    const eventDateInput = document.getElementById('calendar-event-date');
+    if (eventDateInput) {
+        eventDateInput.value = selectedDate;
+    }
+    
+    // 绑定添加事件按钮
+    const addEventBtn = document.getElementById('add-calendar-event');
+    if (addEventBtn) {
+        addEventBtn.addEventListener('click', addCalendarEvent);
+    }
+    
+    // 更新今日事件列表
+    updateTodayEventsList();
+}
+
+// 加载日历事件
+function loadCalendarEvents() {
+    const saved = localStorage.getItem('calendarEvents');
+    if (saved) {
+        try {
+            calendarEvents = JSON.parse(saved);
+        } catch (e) {
+            console.error('加载日历事件失败:', e);
+            calendarEvents = [];
+        }
+    }
+}
+
+// 保存日历事件
+function saveCalendarEvents() {
+    localStorage.setItem('calendarEvents', JSON.stringify(calendarEvents));
+}
+
+// 格式化日期
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// 添加日历事件
+function addCalendarEvent() {
+    const titleInput = document.getElementById('calendar-event-title');
+    const dateInput = document.getElementById('calendar-event-date');
+    const timeInput = document.getElementById('calendar-event-time');
+    const typeSelect = document.getElementById('calendar-event-type');
+    const noteTextarea = document.getElementById('calendar-event-note');
+    
+    const title = titleInput.value.trim();
+    const date = dateInput.value;
+    const time = timeInput.value;
+    const type = typeSelect.value;
+    const note = noteTextarea.value.trim();
+    
+    // 验证
+    if (!title) {
+        showToast('请输入事件标题', 'error');
+        return;
+    }
+    
+    if (!date) {
+        showToast('请选择日期', 'error');
+        return;
+    }
+    
+    // 创建事件对象
+    const event = {
+        id: Date.now(),
+        title: title,
+        date: date,
+        time: time || '',
+        type: type,
+        note: note,
+        createdAt: new Date().toISOString()
+    };
+    
+    // 添加到数组
+    calendarEvents.push(event);
+    
+    // 保存
+    saveCalendarEvents();
+    
+    // 清空表单
+    titleInput.value = '';
+    timeInput.value = '';
+    noteTextarea.value = '';
+    
+    // 更新显示
+    updateTodayEventsList();
+    updateCalendarDays(); // 更新日历显示
+    
+    showToast('事件已添加！', 'success');
+}
+
+// 更新今日事件列表
+function updateTodayEventsList() {
+    const listContainer = document.getElementById('today-events-list');
+    const dateDisplay = document.getElementById('selected-date-display');
+    
+    if (!listContainer) return;
+    
+    // 获取选中日期的事件
+    const dateEvents = calendarEvents.filter(e => e.date === selectedDate);
+    
+    // 更新日期显示
+    if (dateDisplay) {
+        const date = new Date(selectedDate);
+        const today = new Date();
+        const isToday = formatDate(today) === selectedDate;
+        
+        if (isToday) {
+            dateDisplay.textContent = '今日';
+        } else {
+            dateDisplay.textContent = `${date.getMonth() + 1}月${date.getDate()}日`;
+        }
+    }
+    
+    // 清空列表
+    listContainer.innerHTML = '';
+    
+    if (dateEvents.length === 0) {
+        listContainer.innerHTML = `
+            <div class="empty-events">
+                <div class="empty-icon">📭</div>
+                <div class="empty-text">暂无事件</div>
+            </div>
+        `;
+        return;
+    }
+    
+    // 按时间排序
+    dateEvents.sort((a, b) => {
+        if (!a.time && !b.time) return 0;
+        if (!a.time) return 1;
+        if (!b.time) return -1;
+        return a.time.localeCompare(b.time);
+    });
+    
+    // 渲染事件项
+    dateEvents.forEach(event => {
+        const eventItem = createEventItem(event);
+        listContainer.appendChild(eventItem);
+    });
+}
+
+// 创建事件项元素
+function createEventItem(event) {
+    const div = document.createElement('div');
+    div.className = `event-item type-${event.type}`;
+    
+    const typeEmojis = {
+        work: '💼',
+        personal: '👤',
+        meeting: '🤝',
+        birthday: '🎂',
+        holiday: '🎉',
+        other: '📌'
+    };
+    
+    const typeNames = {
+        work: '工作',
+        personal: '个人',
+        meeting: '会议',
+        birthday: '生日',
+        holiday: '节日',
+        other: '其他'
+    };
+    
+    const emoji = typeEmojis[event.type] || '📌';
+    const typeName = typeNames[event.type] || '其他';
+    
+    let html = `
+        <div class="event-header">
+            <div class="event-title">${emoji} ${event.title}</div>
+            <div class="event-type">${typeName}</div>
+        </div>
+    `;
+    
+    if (event.time) {
+        html += `<div class="event-time">⏰ ${event.time}</div>`;
+    }
+    
+    if (event.note) {
+        html += `<div class="event-note">${event.note}</div>`;
+    }
+    
+    html += `
+        <div class="event-actions">
+            <button class="event-delete-btn" onclick="deleteCalendarEvent(${event.id})">🗑️ 删除</button>
+        </div>
+    `;
+    
+    div.innerHTML = html;
+    return div;
+}
+
+// 删除日历事件
+function deleteCalendarEvent(eventId) {
+    if (!confirm('确定要删除这个事件吗？')) {
+        return;
+    }
+    
+    // 从数组中删除
+    calendarEvents = calendarEvents.filter(e => e.id !== eventId);
+    
+    // 保存
+    saveCalendarEvents();
+    
+    // 更新显示
+    updateTodayEventsList();
+    updateCalendarDays();
+    
+    showToast('事件已删除', 'success');
+}
+
+// 获取指定日期的事件数量
+function getEventsCountForDate(dateStr) {
+    return calendarEvents.filter(e => e.date === dateStr).length;
+}
+
+// 全局暴露删除函数（供HTML调用）
+window.deleteCalendarEvent = deleteCalendarEvent;

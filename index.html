@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <script src="prompts.js"></script>
     <script src="ai-module.js"></script>
+    <script src="command-module.js"></script>
 </head>
 <body>
     <!-- 侧边栏抽屉 -->
@@ -39,8 +40,29 @@
         </nav>
     </div>
     
-    <!-- 遮罩层 -->
+    <!-- 遗罩层 -->
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
+        
+    <!-- AI助手悬浮窗（右侧） -->
+    <div class="ai-assistant-float" id="ai-assistant-float">
+        <div class="ai-float-toggle" id="ai-float-toggle">
+            <span class="ai-icon">🤖</span>
+        </div>
+        <div class="ai-float-panel" id="ai-float-panel">
+            <div class="ai-float-header">
+                <span>🤖 AI 助手</span>
+                <button class="ai-float-close" id="ai-float-close">✕</button>
+            </div>
+            <div class="ai-float-messages" id="ai-float-messages">
+                <div class="ai-message system">你好！我是你的日常助手，可以帮你快速执行操作，也可以随意聊天。</div>
+            </div>
+            <div class="ai-float-status" id="ai-float-status" style="display: none;"></div>
+            <div class="ai-float-input">
+                <input type="text" id="ai-float-input" placeholder="说点什么...">
+                <button id="ai-float-send">发送</button>
+            </div>
+        </div>
+    </div>
     
     <!-- 菜单按钮（页面左上角） -->
     <button class="menu-toggle-fixed" id="menu-toggle">☰</button>
@@ -48,9 +70,13 @@
     <div class="container">
         <header>
             <div class="header-content">
-                <div>
+                <div class="header-left">
                     <h1>工作机器打鸣器</h1>
                     <p class="subtitle">距离下一个快乐时刻还有...</p>
+                </div>
+                <!-- 今日留言条（嵌入header） -->
+                <div id="daily-note-banner" class="daily-note-banner-header" style="display: none;">
+                    <span class="note-banner-content" id="daily-note-banner-content"></span>
                 </div>
                 <div class="header-right">
                     <button id="clock-in-btn" class="clock-in-btn-header">👋 上班打卡</button>
@@ -96,9 +122,49 @@
         <!-- 打卡问候弹窗 -->
         <div id="greeting-modal" class="modal">
             <div class="modal-content greeting-modal-content">
+                <button class="close-modal" id="close-greeting-modal">✕</button>
                 <div class="greeting-message" id="greeting-message"></div>
                 <div class="greeting-error" id="greeting-error"></div>
+                
+                <!-- 上班打卡时显示的留言区域 -->
+                <div id="clock-in-note-section" style="display: none;">
+                    <div class="note-input-section">
+                        <label for="daily-note">今日想对自己说的话：</label>
+                        <textarea id="daily-note" placeholder="记录今天的目标、期待或者想对自己说的话..."></textarea>
+                        <div class="note-actions">
+                            <button id="generate-ai-note" class="ai-generate-btn">🤖 AI生成鼓励</button>
+                            <button id="save-daily-note" class="save-note-btn">✔️ 保存留言</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 下班打卡时显示的统计报告 -->
+                <div id="clock-out-summary" style="display: none;">
+                    <div class="summary-content" id="summary-content"></div>
+                </div>
+                
                 <div class="greeting-countdown" id="greeting-countdown"></div>
+            </div>
+        </div>
+        
+        <!-- 时间轴模态窗口 -->
+        <div id="timeline-modal" class="modal">
+            <div class="modal-content timeline-modal-content">
+                <div class="modal-header">
+                    <h2>📅 今日时间轴</h2>
+                    <button class="close-modal" id="close-timeline">✕</button>
+                </div>
+                <div class="timeline-body">
+                    <div id="timeline-date" class="timeline-date"></div>
+                    <div id="timeline-list" class="timeline-list">
+                        <!-- 时间轴事件将通过 JS 动态生成 -->
+                    </div>
+                    <div id="timeline-empty" class="timeline-empty" style="display: none;">
+                        <div class="empty-icon">📆</div>
+                        <div>今日还没有任何记录</div>
+                        <div class="empty-tip">上班打卡、点击卡片、番茄钟等操作都会被记录在时间轴中</div>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -181,9 +247,16 @@
                     </div>
                 </div>
                 
-                <!-- 番茄钟入口按钮 -->
-                <div class="pomodoro-entry">
-                    <button id="open-pomodoro" class="pomodoro-btn">🍅 开启番茄钟</button>
+                <!-- 快捷功能入口 -->
+                <div class="quick-actions">
+                    <button id="open-pomodoro" class="quick-action-btn">
+                        <span class="quick-icon">🍅</span>
+                        <span>番茄钟</span>
+                    </button>
+                    <button id="open-timeline" class="quick-action-btn">
+                        <span class="quick-icon">📅</span>
+                        <span>时间轴</span>
+                    </button>
                 </div>
                 
                 <h2>其他假期</h2>
@@ -193,31 +266,66 @@
             </div>
             
             <div id="calendar" class="tab-content">
-                <div class="calendar-container">
-                    <div class="calendar-header">
-                        <button id="prev-month">◀</button>
-                        <h2 id="current-month">2024年5月</h2>
-                        <button id="next-month">▶</button>
+                <div class="calendar-page-layout">
+                    <!-- 左侧：日历 -->
+                    <div class="calendar-left">
+                        <div class="calendar-container">
+                            <div class="calendar-header">
+                                <button id="prev-month">◀</button>
+                                <h2 id="current-month">2024年5月</h2>
+                                <button id="next-month">▶</button>
+                            </div>
+                            <div class="weekdays">
+                                <div>日</div>
+                                <div>一</div>
+                                <div>二</div>
+                                <div>三</div>
+                                <div>四</div>
+                                <div>五</div>
+                                <div>六</div>
+                            </div>
+                            <div class="calendar-days">
+                                <!-- 日历天数将通过JS动态生成 -->
+                            </div>
+                            <div class="calendar-legend">
+                                <div><span class="legend-color workday"></span> 工作日</div>
+                                <div><span class="legend-color weekend"></span> 周末</div>
+                                <div><span class="legend-color workday-off"></span> 公休假期</div>
+                                <div><span class="legend-color weekend-work"></span> 串休上班日</div>
+                                <div><span class="legend-color custom-holiday"></span> 自定义假期</div>
+                                <div><span class="legend-color salary-day"></span> 发薪日</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="weekdays">
-                        <div>日</div>
-                        <div>一</div>
-                        <div>二</div>
-                        <div>三</div>
-                        <div>四</div>
-                        <div>五</div>
-                        <div>六</div>
-                    </div>
-                    <div class="calendar-days">
-                        <!-- 日历天数将通过JS动态生成 -->
-                    </div>
-                    <div class="calendar-legend">
-                        <div><span class="legend-color workday"></span> 工作日</div>
-                        <div><span class="legend-color weekend"></span> 周末</div>
-                        <div><span class="legend-color workday-off"></span> 公休假期</div>
-                        <div><span class="legend-color weekend-work"></span> 串休上班日</div>
-                        <div><span class="legend-color custom-holiday"></span> 自定义假期</div>
-                        <div><span class="legend-color salary-day"></span> 发薪日</div>
+                    
+                    <!-- 右侧：添加事件和事件列表 -->
+                    <div class="calendar-right">
+                        <!-- 添加事件卡片 -->
+                        <div class="event-add-card">
+                            <h3>📝 添加事件</h3>
+                            <div class="event-form">
+                                <input type="text" id="event-title" class="event-input" placeholder="事件标题">
+                                <select id="event-type" class="event-select">
+                                    <option value="work">💼 工作</option>
+                                    <option value="personal">👤 个人</option>
+                                    <option value="meeting">🤝 会议</option>
+                                    <option value="birthday">🎂 生日</option>
+                                    <option value="holiday">🎉 节日</option>
+                                    <option value="other">📌 其他</option>
+                                </select>
+                                <input type="time" id="event-time" class="event-input" placeholder="时间（可选）">
+                                <textarea id="event-note" class="event-textarea" placeholder="备注（可选）" rows="2"></textarea>
+                                <button id="add-calendar-event" class="event-add-btn">添加事件</button>
+                            </div>
+                        </div>
+                        
+                        <!-- 今日事件列表 -->
+                        <div class="today-events-card">
+                            <h3>📅 <span id="selected-date-display">今日</span>事件</h3>
+                            <div id="today-events-list" class="events-list">
+                                <!-- 事件列表将通过JS动态生成 -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -339,10 +447,10 @@
             </div>
             <p>数据保存在本地浏览器中 | 摸鱼愉快 😎</p>
             <div class="documentation-links">
-                <a href="docs/viewer.html?doc=product_document.md" target="_self">产品文档</a> | 
-                <a href="docs/viewer.html?doc=prompt_document.md" target="_self">Prompt指令文档</a> | 
-                <a href="docs/viewer.html?doc=development_log.md" target="_self">开发日志</a> | 
-                <a href="docs/viewer.html?doc=user_manual.md" target="_self">用户手册</a> | 
+                <a href="docs/viewer.html?doc=product_document.md">产品文档</a> | 
+                <a href="docs/viewer.html?doc=prompt_document.md">Prompt指令文档</a> | 
+                <a href="docs/viewer.html?doc=development_log.md">开发日志</a> | 
+                <a href="docs/viewer.html?doc=user_manual.md">用户手册</a> | 
                 <a href="https://mrmiracle1.github.io/xinliu_diary/" target="_blank">心流日记</a>
             </div>
         </footer>
