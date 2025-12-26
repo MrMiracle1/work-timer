@@ -30,8 +30,8 @@ const COMMAND_UNDERSTANDING_PROMPT = `你是一个智能助手，负责理解用
 4. pause_pomodoro - 暂停番茄钟（例如：暂停番茄钟、停止专注）
 5. show_timeline - 查看时间轴（例如：查看时间轴、今天做了什么、看看记录）
 6. show_calendar - 查看日历（例如：打开日历、看看假期、查看日期）
-7. switch_tab - 切换标签页（例如：切换到日历、打开网上冲浪、去人民日报）
-8. relax - 摸鱼休息（例如：我要摸鱼、休息一下、放松一下）
+7. switch_tab - 切换标签页（例如：切换到日历、打开网上冲浪、去人民日报、我想读书）
+8. relax - 摸鱼休息（例如：我要摸鱻、休息一下、放松一下）
 9. show_settings - 打开设置（例如：打开设置、修改配置、调整时间）
 10. chat - 纯聊天模式（用户只是闲聊，没有明确的操作意图）
 
@@ -42,7 +42,7 @@ const COMMAND_UNDERSTANDING_PROMPT = `你是一个智能助手，负责理解用
   "type": "操作类型（如果是聊天则为chat）",
   "confidence": 置信度(0-1之间的数字，表示对意图的确定程度),
   "params": {
-    "tab": "如果是switch_tab，这里是目标标签页名称（countdown/calendar/rmrb/surf/settings）"
+    "tab": "如果是switch_tab，这里是目标标签页名称（countdown/calendar/rmrb/surf/reader/settings）"
   },
   "chat_response": "对用户的友好回复（如果是chat模式，则这里是聊天内容）"
 }
@@ -145,6 +145,7 @@ async function executeCommand(commandType, params = {}) {
                     'calendar': '日历',
                     'rmrb': '人民日报',
                     'surf': '网上冲浪',
+                    'reader': '读书',
                     'settings': '设置'
                 };
                 return { success: true, message: `正在切换到${tabNames[tabName] || tabName}...` };
@@ -286,6 +287,7 @@ function getTabName(tab) {
         'calendar': '日历',
         'rmrb': '人民日报',
         'surf': '网上冲浪',
+        'reader': '读书',
         'settings': '设置'
     };
     return tabNames[tab] || tab;

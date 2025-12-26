@@ -8,6 +8,7 @@
     <script src="prompts.js"></script>
     <script src="ai-module.js"></script>
     <script src="command-module.js"></script>
+    <script src="effects.js"></script>
 </head>
 <body>
     <!-- 侧边栏抽屉 -->
@@ -32,6 +33,10 @@
             <a href="#" class="nav-item" data-tab="surf">
                 <span class="nav-icon">🏄</span>
                 <span class="nav-text">网上冲浪</span>
+            </a>
+            <a href="#" class="nav-item" data-tab="reader">
+                <span class="nav-icon">📖</span>
+                <span class="nav-text">读书</span>
             </a>
             <a href="#" class="nav-item" data-tab="settings">
                 <span class="nav-icon">⚙️</span>
@@ -122,18 +127,32 @@
         <!-- 打卡问候弹窗 -->
         <div id="greeting-modal" class="modal">
             <div class="modal-content greeting-modal-content">
+                <!-- 特效画布 -->
+                <canvas id="effect-canvas" class="effect-canvas"></canvas>
+                
                 <button class="close-modal" id="close-greeting-modal">✕</button>
                 <div class="greeting-message" id="greeting-message"></div>
                 <div class="greeting-error" id="greeting-error"></div>
                 
-                <!-- 上班打卡时显示的留言区域 -->
-                <div id="clock-in-note-section" style="display: none;">
-                    <div class="note-input-section">
-                        <label for="daily-note">今日想对自己说的话：</label>
-                        <textarea id="daily-note" placeholder="记录今天的目标、期待或者想对自己说的话..."></textarea>
-                        <div class="note-actions">
-                            <button id="generate-ai-note" class="ai-generate-btn">🤖 AI生成鼓励</button>
-                            <button id="save-daily-note" class="save-note-btn">✔️ 保存留言</button>
+                <!-- 上班打卡时显示的摸鱼吉日签 -->
+                <div id="moyu-fortune-section" style="display: none;">
+                    <div class="moyu-fortune-card">
+                        <h3>🎰 今日摸鱼吉日签</h3>
+                        <div class="fortune-item">
+                            <div class="fortune-label">🌟 摸鱼运势</div>
+                            <div class="fortune-value" id="moyu-fortune"></div>
+                        </div>
+                        <div class="fortune-item">
+                            <div class="fortune-label">⏰ 最佳时间</div>
+                            <div class="fortune-value" id="moyu-best-time"></div>
+                        </div>
+                        <div class="fortune-item">
+                            <div class="fortune-label">💡 摸鱼锦囊</div>
+                            <div class="fortune-tips" id="moyu-tips"></div>
+                        </div>
+                        <div class="fortune-actions">
+                            <button id="retry-fortune" class="retry-fortune-btn">🎲 再求一签</button>
+                            <button id="save-fortune" class="save-fortune-btn">✔️ 开始摸鱼</button>
                         </div>
                     </div>
                 </div>
@@ -171,7 +190,7 @@
         <div id="setup-modal" class="modal">
             <div class="modal-content">
                 <h2>首次设置</h2>
-                <p>请设置您的上下班时间和发薪日</p>
+                <p>请设置您的上下班时间、工资和发薪日</p>
                 <div class="form-group">
                     <label for="work-start-time">上班时间:</label>
                     <input type="time" id="work-start-time" value="08:30">
@@ -187,6 +206,10 @@
                 <div class="form-group">
                     <label for="work-end-time">下班时间:</label>
                     <input type="time" id="work-end-time" value="17:30">
+                </div>
+                <div class="form-group">
+                    <label for="monthly-salary">每月工资（元）:</label>
+                    <input type="number" id="monthly-salary" min="0" step="100" value="8000" placeholder="请输入月工资">
                 </div>
                 <div class="form-group">
                     <label for="salary-type">发薪日类型:</label>
@@ -334,6 +357,10 @@
                 <iframe src="rmrb/index.html" class="rmrb-iframe"></iframe>
             </div>
             
+            <div id="reader" class="tab-content">
+                <iframe src="reader/index.html" class="reader-iframe"></iframe>
+            </div>
+            
             <div id="surf" class="tab-content">
                 <iframe src="surf/index.html" class="surf-iframe"></iframe>
             </div>
@@ -356,6 +383,10 @@
                     <div class="form-group">
                         <label for="settings-work-end-time">下班时间:</label>
                         <input type="time" id="settings-work-end-time">
+                    </div>
+                    <div class="form-group">
+                        <label for="settings-monthly-salary">每月工资（元）:</label>
+                        <input type="number" id="settings-monthly-salary" min="0" step="100" placeholder="请输入月工资">
                     </div>
                     <div class="form-group">
                         <label for="settings-salary-type">发薪日类型:</label>
@@ -445,7 +476,7 @@
                 <div class="footer-tab" data-tab="surf">网上冲浪</div>
                 <div class="footer-tab" data-tab="settings">设置</div>
             </div>
-            <p>数据保存在本地浏览器中 | 摸鱼愉快 😎</p>
+            <p>数据保存在本地浏览器中 | 摸鱻愉快 😎 | <span class="version-tag">v1.4.1</span></p>
             <div class="documentation-links">
                 <a href="docs/viewer.html?doc=product_document.md">产品文档</a> | 
                 <a href="docs/viewer.html?doc=prompt_document.md">Prompt指令文档</a> | 

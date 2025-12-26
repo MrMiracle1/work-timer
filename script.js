@@ -189,6 +189,7 @@ document.getElementById('save-work-time').addEventListener('click', function() {
     const lunchStart = document.getElementById('lunch-start-time').value;
     const lunchEnd = document.getElementById('lunch-end-time').value;
     const endTime = document.getElementById('work-end-time').value;
+    const monthlySalary = document.getElementById('monthly-salary').value;
     
     // 验证时间设置的合理性
     if (!validateTimeSettings(startTime, lunchStart, lunchEnd, endTime)) {
@@ -200,6 +201,7 @@ document.getElementById('save-work-time').addEventListener('click', function() {
     localStorage.setItem('lunchStartTime', lunchStart);
     localStorage.setItem('lunchEndTime', lunchEnd);
     localStorage.setItem('workEndTime', endTime);
+    localStorage.setItem('monthlySalary', monthlySalary || '8000');
     localStorage.setItem('salaryType', document.getElementById('salary-type').value);
     localStorage.setItem('salaryDay', document.getElementById('salary-day').value);
     
@@ -225,22 +227,6 @@ window.addEventListener('DOMContentLoaded', function() {
     checkFirstVisit();
 });
 
-// 初始化标签页
-function initTabs() {
-    const footerTabs = document.querySelectorAll('.footer-tab');
-    const tabContents = document.querySelectorAll('.tab-content');
-    
-    // 设置默认标签页
-    switchTab('countdown');
-    
-    // 添加底部标签点击事件
-    footerTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const tabId = tab.getAttribute('data-tab');
-            switchTab(tabId);
-        });
-    });
-}
 
 // 初始化侧边栏
 function initSidebar() {
@@ -544,154 +530,169 @@ function initClockIn() {
     // 打卡按钮点击事件
     clockInBtn.addEventListener('click', async () => {
         const type = clockInBtn.dataset.type;
-        
-        // 如果是已下班状态，直接显示总结
-        if (type === 'FINISHED') {
-            const greetingMessage = document.getElementById('greeting-message');
-            const greetingError = document.getElementById('greeting-error');
-            const greetingCountdown = document.getElementById('greeting-countdown');
-            const clockInNoteSection = document.getElementById('clock-in-note-section');
-            const clockOutSummary = document.getElementById('clock-out-summary');
-            
-            greetingMessage.textContent = '🎉 今日工作已结束';
-            greetingError.textContent = '';
-            greetingCountdown.textContent = '';
-            clockInNoteSection.style.display = 'none';
-            clockOutSummary.style.display = 'block';
-            greetingModal.classList.add('show');
-            document.body.style.overflow = 'hidden';
-            
-            // 显示总结
-            const summary = generateDailySummary();
-            document.getElementById('summary-content').innerHTML = summary;
-            
-            // 设置关闭事件
-            const closeModal = () => {
-                greetingModal.classList.remove('show');
-                document.body.style.overflow = '';
-            };
-            
-            closeGreetingBtn.onclick = closeModal;
-            greetingModal.onclick = (e) => {
-                if (e.target === greetingModal) closeModal();
-            };
-            
-            return;
-        }
-        
-        // 显示加载中
         const greetingMessage = document.getElementById('greeting-message');
         const greetingError = document.getElementById('greeting-error');
         const greetingCountdown = document.getElementById('greeting-countdown');
-        const clockInNoteSection = document.getElementById('clock-in-note-section');
+        const moyuFortuneSection = document.getElementById('moyu-fortune-section');
         const clockOutSummary = document.getElementById('clock-out-summary');
         
-        greetingMessage.textContent = '正在生成问候语...';
-        greetingError.textContent = '';
-        greetingCountdown.textContent = '';
-        clockInNoteSection.style.display = 'none';
-        clockOutSummary.style.display = 'none';
-        greetingModal.classList.add('show');
-        document.body.style.overflow = 'hidden';
+        // 初始化特效系统
+        const effects = new ClockEffects('effect-canvas');
         
-        // 调用 AI 获取问候语
-        const result = await window.AIModule.getAIGreeting(type);
-        
-        greetingMessage.textContent = result.message;
-        
-        if (!result.isAI && result.error) {
-            greetingError.textContent = `AI 调用失败: ${result.error}`;
-        }
-        
-        // 记录打卡时间
+        // 记录打卡时间和信息
         const now = new Date();
         const today = now.toDateString();
         const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
         
-        if (type === 'CLOCK_IN') {
-            // 上班打卡：显示留言输入区
-            clockInNoteSection.style.display = 'block';
-            
-            // 添加时间轴事件
-            localStorage.setItem(`clockInTime_${today}`, now.toISOString());
-            
-            // AI生成鼓励按钮
-            document.getElementById('generate-ai-note').onclick = async () => {
-                const noteTextarea = document.getElementById('daily-note');
-                noteTextarea.value = '正在生成...';
-                
-                const aiResult = await window.AIModule.callDeepSeekAPI(
-                    '请生成一句简短的工作鼓励语，帮助用户开启美好的一天，不超过50字。',
-                    { maxTokens: 100 }
-                );
-                noteTextarea.value = aiResult;
-            };
-            
-            // 保存留言按钮
-            document.getElementById('save-daily-note').onclick = () => {
-                const note = document.getElementById('daily-note').value;
-                if (note.trim()) {
-                    addTimelineEvent('clock-in', `上班打卡 ${timeStr}`, { note: note });
-                    // 保存留言到 localStorage
-                    localStorage.setItem(`dailyNote_${today}`, note);
-                    showToast('留言已保存！');
-                    // 显示留言卡片
-                    displayDailyNote(note);
-                } else {
-                    addTimelineEvent('clock-in', `上班打卡 ${timeStr}`);
-                }
-                // 保存打卡类型和日期
-                localStorage.setItem('lastClockInType', type);
-                localStorage.setItem('lastClockInDate', today);
-                updateClockInButton();
-                greetingModal.classList.remove('show');
-                document.body.style.overflow = '';
-            };
-        } else {
-            // 下班打卡：生成今日统计报告
-            clockOutSummary.style.display = 'block';
-            const summary = generateDailySummary();
-            document.getElementById('summary-content').innerHTML = summary;
-            
-            // 添加时间轴事件
-            addTimelineEvent('clock-out', `下班打卡 ${timeStr}`);
-            
-            // 保存打卡类型和日期
-            localStorage.setItem('lastClockInType', type);
-            localStorage.setItem('lastClockInDate', today);
-            updateClockInButton();
-        }
-        
-        // 10秒倒计时关闭
-        let countdown = 10;
-        greetingCountdown.textContent = `${countdown}秒后自动关闭`;
-        
-        const countdownInterval = setInterval(() => {
-            countdown--;
-            if (countdown > 0) {
-                greetingCountdown.textContent = `${countdown}秒后自动关闭`;
-            } else {
-                clearInterval(countdownInterval);
-                greetingModal.classList.remove('show');
-                document.body.style.overflow = '';
-            }
-        }, 1000);
-        
-        // 点击关闭按钮
-        closeGreetingBtn.onclick = () => {
-            clearInterval(countdownInterval);
+        // 立即绑定关闭事件（在显示弹窗前，确保加载时也能关闭）
+        const closeModal = () => {
+            effects.clear();
             greetingModal.classList.remove('show');
             document.body.style.overflow = '';
         };
         
-        // 点击弹窗外部关闭
+        closeGreetingBtn.onclick = closeModal;
         greetingModal.onclick = (e) => {
-            if (e.target === greetingModal) {
-                clearInterval(countdownInterval);
-                greetingModal.classList.remove('show');
-                document.body.style.overflow = '';
-            }
+            if (e.target === greetingModal) closeModal();
         };
+        
+        // 如果是已下班状态，直接显示总结
+        if (type === 'FINISHED') {
+            greetingMessage.innerHTML = '<div class="greeting-loading"><div class="spinner"></div><span>正在加载...</span></div>';
+            greetingError.textContent = '';
+            greetingCountdown.textContent = '';
+            moyuFortuneSection.style.display = 'none';
+            greetingModal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            // 生成问候语
+            const greetingResult = await window.AIModule.getAIGreeting('CLOCK_OUT');
+            greetingMessage.textContent = greetingResult.message;
+            
+            // 显示容器并添加加载动画（只更新summary-content，不破坏容器）
+            clockOutSummary.style.display = 'block';
+            const summaryContent = document.getElementById('summary-content');
+            if (summaryContent) {
+                summaryContent.innerHTML = '<div class="loading-animation"><div class="spinner"></div><p>正在生成工作总结...</p></div>';
+            }
+            
+            try {
+                // 显示总结
+                await displayWorkSummary();
+            } catch (error) {
+                const summaryContent = document.getElementById('summary-content');
+                if (summaryContent) {
+                    summaryContent.innerHTML = `
+                        <div class="work-summary">
+                            <h3>📋 今日工作总结</h3>
+                            <div class="summary-ai-text">今天辛苦了！一天的工作圆满完成，明天继续加油！💪</div>
+                        </div>
+                    `;
+                }
+            }
+            
+            return;
+        }
+        
+        // 先显示弹窗和加载动画
+        greetingMessage.innerHTML = '<div class="greeting-loading"><div class="spinner"></div><span>正在生成问候语...</span></div>';
+        greetingError.textContent = '';
+        greetingCountdown.textContent = '';
+        moyuFortuneSection.style.display = 'none';
+        clockOutSummary.style.display = 'none';
+        greetingModal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        
+        // 立即保存打卡状态（关闭弹窗也算打卡成功）
+        localStorage.setItem('lastClockInType', type);
+        localStorage.setItem('lastClockInDate', today);
+        if (type === 'CLOCK_IN') {
+            localStorage.setItem(`clockInTime_${today}`, now.toISOString());
+        }
+        updateClockInButton();
+        
+        // 生成问候语
+        const greetingResult = await window.AIModule.getAIGreeting(type);
+        greetingMessage.textContent = greetingResult.message;
+        
+        if (type === 'CLOCK_IN') {
+            // 上班打卡：生成摸鱼吉日签
+            // 播放阳光特效
+            effects.playSunshine();
+            
+            // 添加加载动画
+            moyuFortuneSection.innerHTML = '<div class="loading-animation"><div class="spinner"></div><p>正在生成摸鱼吉日签...</p></div>';
+            moyuFortuneSection.style.display = 'block';
+            
+            // 获取摸鱼吉日签
+            const fortuneResult = await window.AIModule.getMoyuFortune();
+            
+            if (!fortuneResult.isAI && fortuneResult.error) {
+                greetingError.textContent = `AI 调用失败: ${fortuneResult.error}`;
+                console.warn('AI调用失败，使用兜底数据');
+            }
+            
+            // 显示摸鱼吉日签（函数内部会重建 HTML）
+            displayMoyuFortune(fortuneResult.data);
+            
+            // 保存摸鱼运势到localStorage（用于header显示）
+            localStorage.setItem(`moyuFortune_${today}`, fortuneResult.data.fortune);
+            displayDailyNote(fortuneResult.data.fortune);
+            
+            // 再求一签按钮
+            document.getElementById('retry-fortune').onclick = async () => {
+                document.getElementById('retry-fortune').disabled = true;
+                document.getElementById('retry-fortune').textContent = '正在求签...';
+                
+                const newFortune = await window.AIModule.getMoyuFortune();
+                displayMoyuFortune(newFortune.data);
+                localStorage.setItem(`moyuFortune_${today}`, newFortune.data.fortune);
+                displayDailyNote(newFortune.data.fortune);
+                
+                document.getElementById('retry-fortune').disabled = false;
+                document.getElementById('retry-fortune').textContent = '🎲 再求一签';
+            };
+            
+            // 开始摸鱼按钮
+            document.getElementById('save-fortune').onclick = () => {
+                addTimelineEvent('clock-in', `上班打卡 ${timeStr}`, { 
+                    fortune: fortuneResult.data.fortune 
+                });
+                
+                closeModal();
+                showToast('摸鱼吉日签已保存！');
+            };
+        } else {
+            // 下班打卡：生成今日统计报告
+            // 播放礼花特效
+            effects.playFireworks();
+            
+            // 显示容器并添加加载动画（只更新summary-content，不破坏容器）
+            clockOutSummary.style.display = 'block';
+            const summaryContent = document.getElementById('summary-content');
+            if (summaryContent) {
+                summaryContent.innerHTML = '<div class="loading-animation"><div class="spinner"></div><p>正在生成工作总结...</p></div>';
+            }
+            
+            try {
+                // 显示总结
+                await displayWorkSummary();
+            } catch (error) {
+                console.error('显示工作总结失败:', error);
+                const summaryContent = document.getElementById('summary-content');
+                if (summaryContent) {
+                    summaryContent.innerHTML = `
+                        <div class="work-summary">
+                            <h3>📋 今日工作总结</h3>
+                            <div class="summary-ai-text">今天辛苦了！一天的工作圆满完成，明天继续加油！💪</div>
+                        </div>
+                    `;
+                }
+            }
+            
+            // 添加时间轴事件
+            addTimelineEvent('clock-out', `下班打卡 ${timeStr}`);
+        }
     });
     
     // 初始化时更新按钮状态
@@ -757,12 +758,12 @@ function displayDailyNote(note) {
     }
 }
 
-// 初始化时加载今日留言
+// 初始化时加载今日摸鱼运势
 function loadDailyNote() {
     const today = new Date().toDateString();
-    const note = localStorage.getItem(`dailyNote_${today}`);
-    if (note) {
-        displayDailyNote(note);
+    const fortune = localStorage.getItem(`moyuFortune_${today}`);
+    if (fortune) {
+        displayDailyNote(fortune);
     }
 }
 
@@ -1074,10 +1075,13 @@ function initApp() {
     document.getElementById('settings-work-end-time').value = workEndTime;
     const savedSalaryType = localStorage.getItem('salaryType') || 'fixed';
     const savedSalaryDay = localStorage.getItem('salaryDay') || '1';
+    const savedMonthlySalary = localStorage.getItem('monthlySalary') || '8000';
     const settingsSalaryTypeEl = document.getElementById('settings-salary-type');
     const settingsSalaryDayEl = document.getElementById('settings-salary-day');
+    const settingsMonthlySalaryEl = document.getElementById('settings-monthly-salary');
     if (settingsSalaryTypeEl) settingsSalaryTypeEl.value = savedSalaryType;
     if (settingsSalaryDayEl) settingsSalaryDayEl.value = savedSalaryDay;
+    if (settingsMonthlySalaryEl) settingsMonthlySalaryEl.value = savedMonthlySalary;
 
     const holidaysTextEl = document.getElementById('official-holidays-json');
     if (holidaysTextEl) {
@@ -1168,12 +1172,6 @@ function initApp() {
     }
 }
 
-// 显示设置模态框
-function showSetupModal() {
-    const modal = document.getElementById('setup-modal');
-    modal.style.display = 'flex';
-}
-
 // 更新工作时间
 // 计算两个日期之间的天数
 function daysBetween(date1, date2) {
@@ -1186,6 +1184,7 @@ function updateWorkTime() {
     const lunchStart = document.getElementById('settings-lunch-start-time').value;
     const lunchEnd = document.getElementById('settings-lunch-end-time').value;
     const endTime = document.getElementById('settings-work-end-time').value;
+    const monthlySalary = document.getElementById('settings-monthly-salary').value;
 
     // 验证时间设置的合理性
     if (!validateTimeSettings(startTime, lunchStart, lunchEnd, endTime)) {
@@ -1214,6 +1213,7 @@ function updateWorkTime() {
     localStorage.setItem('lunchStartTime', lunchStartTime);
     localStorage.setItem('lunchEndTime', lunchEndTime);
     localStorage.setItem('workEndTime', workEndTime);
+    localStorage.setItem('monthlySalary', monthlySalary || '8000');
 
     const salaryType = document.getElementById('settings-salary-type').value;
     localStorage.setItem('salaryType', salaryType);
@@ -2804,17 +2804,21 @@ function formatDate(date) {
 
 // 添加日历事件
 function addCalendarEvent() {
-    const titleInput = document.getElementById('calendar-event-title');
-    const dateInput = document.getElementById('calendar-event-date');
-    const timeInput = document.getElementById('calendar-event-time');
-    const typeSelect = document.getElementById('calendar-event-type');
-    const noteTextarea = document.getElementById('calendar-event-note');
+    const titleInput = document.getElementById('event-title');
+    const timeInput = document.getElementById('event-time');
+    const typeSelect = document.getElementById('event-type');
+    const noteTextarea = document.getElementById('event-note');
+    
+    if (!titleInput || !typeSelect) {
+        showToast('表单元素未找到', 'error');
+        return;
+    }
     
     const title = titleInput.value.trim();
-    const date = dateInput.value;
-    const time = timeInput.value;
+    const time = timeInput ? timeInput.value : '';
     const type = typeSelect.value;
-    const note = noteTextarea.value.trim();
+    const note = noteTextarea ? noteTextarea.value.trim() : '';
+    const date = selectedDate; // 使用当前选中的日期
     
     // 验证
     if (!title) {
@@ -2823,7 +2827,7 @@ function addCalendarEvent() {
     }
     
     if (!date) {
-        showToast('请选择日期', 'error');
+        showToast('请先在日历上选择日期', 'error');
         return;
     }
     
@@ -2846,8 +2850,8 @@ function addCalendarEvent() {
     
     // 清空表单
     titleInput.value = '';
-    timeInput.value = '';
-    noteTextarea.value = '';
+    if (timeInput) timeInput.value = '';
+    if (noteTextarea) noteTextarea.value = '';
     
     // 更新显示
     updateTodayEventsList();
@@ -2984,3 +2988,115 @@ function getEventsCountForDate(dateStr) {
 
 // 全局暴露删除函数（供HTML调用）
 window.deleteCalendarEvent = deleteCalendarEvent;
+
+// 显示摸鱻吉日签
+function displayMoyuFortune(fortuneData) {
+    const moyuFortuneSection = document.getElementById('moyu-fortune-section');
+    
+    const fortune = fortuneData.fortune || '★★★★☆ 运势中等';
+    const bestTime = fortuneData.bestTime || '14:30-15:00 - 下午茶时间';
+    const tips = fortuneData.tips || [
+        '摸鱻前记得看一眼老板的位置，安全第一👀',
+        '摸鱻时保持工作姿势，技巧性摸鱻是一门艺术🎨',
+        '适度摸鱼提高效率，劳逸结合才是王道🚀'
+    ];
+    
+    const tipsHtml = tips.map(tip => `<div>${tip}</div>`).join('');
+    
+    moyuFortuneSection.innerHTML = `
+        <div class="moyu-fortune-card">
+            <h3>🎰 今日摸鱻吉日签</h3>
+            <div class="fortune-item">
+                <div class="fortune-label">🌟 摸鱻运势</div>
+                <div class="fortune-value" id="moyu-fortune">${fortune}</div>
+            </div>
+            <div class="fortune-item">
+                <div class="fortune-label">⏰ 最佳时间</div>
+                <div class="fortune-value" id="moyu-best-time">${bestTime}</div>
+            </div>
+            <div class="fortune-item">
+                <div class="fortune-label">💡 摸鱻锦囊</div>
+                <div class="fortune-tips" id="moyu-tips">${tipsHtml}</div>
+            </div>
+            <div class="fortune-actions">
+                <button id="retry-fortune" class="retry-fortune-btn">🎲 再求一签</button>
+                <button id="save-fortune" class="save-fortune-btn">✔️ 开始摸鱻</button>
+            </div>
+        </div>
+    `;
+}
+
+// 计算今日收入
+async function calculateDailyIncome() {
+    const monthlySalary = parseFloat(localStorage.getItem('monthlySalary') || '8000');
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    // 获取当月天数
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // 计算每日工资
+    const dailyIncome = (monthlySalary / daysInMonth).toFixed(2);
+    
+    return dailyIncome;
+}
+
+// 显示工作总结（带AI生成）
+async function displayWorkSummary() {
+    const today = new Date().toDateString();
+    const clockInTime = localStorage.getItem(`clockInTime_${today}`);
+    const now = new Date();
+    
+    // 统计摸鱻次数
+    const relaxEvents = todayTimeline.filter(e => e.type === 'relax');
+    const relaxCount = relaxEvents.length;
+    
+    // 计算今日收入
+    const dailyIncome = await calculateDailyIncome();
+    
+    // 格式化时间
+    const clockInTimeStr = clockInTime ? 
+        new Date(clockInTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : 
+        '未知';
+    const clockOutTimeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    
+    // 调用AI生成工作总结
+    const summaryResult = await window.AIModule.generateWorkSummary({
+        clockInTime: clockInTimeStr,
+        clockOutTime: clockOutTimeStr,
+        relaxCount: relaxCount,
+        dailyIncome: dailyIncome
+    });
+    
+    // 显示总结
+    const summaryContent = document.getElementById('summary-content');
+    if (!summaryContent) {
+        return;
+    }
+    
+    summaryContent.innerHTML = `
+        <div class="work-summary">
+            <h3>📋 今日工作总结</h3>
+            <div class="summary-ai-text">${summaryResult.summary || '今天辛苦了！'}</div>
+            <div class="summary-details">
+                <div class="summary-item">
+                    <span class="summary-label">🕑 上班时间</span>
+                    <span class="summary-value">${clockInTimeStr}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">🕚 下班时间</span>
+                    <span class="summary-value">${clockOutTimeStr}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">🎮 摸鱻次数</span>
+                    <span class="summary-value">${relaxCount} 次</span>
+                </div>
+                <div class="summary-item highlight">
+                    <span class="summary-label">💰 今日收入</span>
+                    <span class="summary-value">￥${dailyIncome}</span>
+                </div>
+            </div>
+        </div>
+    `;
+}

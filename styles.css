@@ -368,7 +368,7 @@ body {
 .container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 16px 20px;
+    padding: 12px 16px;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -378,10 +378,10 @@ body {
 /* 头部样式 - 简化设计 */
 header {
     background-color: var(--card-background);
-    padding: 16px 24px;
+    padding: 12px 18px;
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-sm);
-    margin-bottom: 20px;
+    margin-bottom: 12px;
     border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
@@ -508,8 +508,7 @@ main {
 /* 人民日报 iframe 样式 */
 .rmrb-iframe {
     width: 100%;
-    height: calc(100vh - 200px);
-    min-height: 600px;
+    height: calc(100vh - 160px);
     border: none;
     border-radius: var(--border-radius);
     background: white;
@@ -518,8 +517,16 @@ main {
 /* 网上冲浪 iframe 样式 */
 .surf-iframe {
     width: 100%;
-    height: calc(100vh - 200px);
-    min-height: 600px;
+    height: calc(100vh - 160px);
+    border: none;
+    border-radius: var(--border-radius);
+    background: white;
+}
+
+/* 读书模块 iframe 样式 */
+.reader-iframe {
+    width: 100%;
+    height: calc(100vh - 160px);
     border: none;
     border-radius: var(--border-radius);
     background: white;
@@ -529,8 +536,8 @@ main {
 /* 日历页面布局 - 优化 */
 .calendar-page-layout {
     display: grid;
-    grid-template-columns: 1fr 380px;
-    gap: 18px;
+    grid-template-columns: 1fr 360px;
+    gap: 14px;
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
@@ -551,12 +558,12 @@ main {
 .calendar-right {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
 }
 
 .calendar-container {
     background-color: var(--card-background);
-    padding: 18px 20px;
+    padding: 14px 16px;
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-sm);
     border: 1px solid rgba(0, 0, 0, 0.04);
@@ -567,7 +574,7 @@ main {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 18px;
+    margin-bottom: 12px;
 }
 
 .calendar-header button {
@@ -603,8 +610,8 @@ main {
 }
 
 .calendar-day {
-    aspect-ratio: 1.15;
-    min-height: 54px;
+    aspect-ratio: 1.2;
+    min-height: 46px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -613,7 +620,7 @@ main {
     transition: var(--transition);
     position: relative;
     border: 1px solid #f0f0f0;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .calendar-day:hover {
@@ -698,15 +705,15 @@ main {
 .event-add-card {
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
     border-radius: var(--border-radius);
-    padding: 18px 20px;
+    padding: 14px 16px;
     box-shadow: var(--shadow-sm);
     border: 1.5px solid rgba(102, 126, 234, 0.15);
     color: var(--text-color);
 }
 
 .event-add-card h3 {
-    margin: 0 0 14px 0;
-    font-size: 16px;
+    margin: 0 0 10px 0;
+    font-size: 15px;
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -717,7 +724,7 @@ main {
 .event-form {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .form-row {
@@ -729,7 +736,7 @@ main {
 .event-select,
 .event-textarea {
     flex: 1;
-    padding: 9px 12px;
+    padding: 8px 10px;
     border: none;
     border-radius: var(--border-radius-sm);
     font-size: 13px;
@@ -748,7 +755,7 @@ main {
 .event-textarea {
     resize: vertical;
     font-family: inherit;
-    min-height: 60px;
+    min-height: 50px;
 }
 
 .event-add-btn {
@@ -772,7 +779,7 @@ main {
 .today-events-card {
     background-color: var(--card-background);
     border-radius: var(--border-radius);
-    padding: 18px 20px;
+    padding: 14px 16px;
     box-shadow: var(--shadow-sm);
     border: 1px solid rgba(0, 0, 0, 0.04);
     display: flex;
@@ -780,8 +787,8 @@ main {
 }
 
 .today-events-card h3 {
-    margin: 0 0 14px 0;
-    font-size: 16px;
+    margin: 0 0 10px 0;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text-color);
 }
@@ -789,9 +796,9 @@ main {
 .events-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     overflow-y: auto;
-    max-height: 500px;
+    max-height: 280px;
 }
 
 .events-list::-webkit-scrollbar {
@@ -1347,6 +1354,17 @@ footer p {
     font-size: 14px;
 }
 
+.version-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 4px;
+}
+
 .documentation-links {
     margin-top: 10px;
     padding-top: 10px;
@@ -1599,6 +1617,8 @@ footer p {
     max-width: 600px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     position: relative;
+    overflow: visible; /* 确保特效可以渲染在容器外 */
+    z-index: 1001; /* 比modal高一点 */
 }
 
 .greeting-message {
@@ -1979,4 +1999,218 @@ footer p {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* 特效画布 */
+.effect-canvas {
+    position: fixed; /* 改为 fixed 确保全屏显示 */
+    top: 0;
+    left: 0;
+    width: 100vw; /* 使用 viewport 单位 */
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9999; /* 提高 z-index 到最高 */
+}
+
+/* 摸鱼吉日签样式 */
+.moyu-fortune-card {
+    background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+    border-radius: var(--border-radius);
+    padding: 24px;
+    margin-top: 20px;
+    border: 2px solid #ffc107;
+    box-shadow: var(--shadow);
+}
+
+.moyu-fortune-card h3 {
+    text-align: center;
+    font-size: 20px;
+    margin: 0 0 20px 0;
+    color: #d97706;
+    font-weight: 700;
+}
+
+.fortune-item {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: var(--border-radius-sm);
+    border-left: 3px solid #f59e0b;
+}
+
+.fortune-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #92400e;
+    margin-bottom: 8px;
+}
+
+.fortune-value {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-color);
+}
+
+.fortune-tips {
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text-color);
+}
+
+.fortune-tips div {
+    padding: 6px 0;
+    padding-left: 20px;
+    position: relative;
+}
+
+.fortune-tips div::before {
+    content: '•';
+    position: absolute;
+    left: 8px;
+    color: #f59e0b;
+    font-weight: bold;
+}
+
+.fortune-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    justify-content: center;
+}
+
+.retry-fortune-btn,
+.save-fortune-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.retry-fortune-btn {
+    background: rgba(249, 115, 22, 0.1);
+    color: #ea580c;
+    border: 2px solid #f59e0b;
+}
+
+.retry-fortune-btn:hover {
+    background: rgba(249, 115, 22, 0.2);
+    transform: translateY(-2px);
+}
+
+.save-fortune-btn {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.save-fortune-btn:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* 工作总结样式 */
+.work-summary {
+    padding: 20px;
+}
+
+.work-summary h3 {
+    text-align: center;
+    font-size: 20px;
+    margin: 0 0 20px 0;
+    color: var(--text-color);
+}
+
+.summary-ai-text {
+    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+    padding: 16px 20px;
+    border-radius: var(--border-radius-sm);
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--text-color);
+    margin-bottom: 20px;
+    border-left: 4px solid #00acc1;
+    font-weight: 500;
+}
+
+.summary-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.summary-item {
+    background: rgba(0, 0, 0, 0.02);
+    padding: 12px 16px;
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.summary-item.highlight {
+    background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+    border: 2px solid #ffc107;
+    grid-column: 1 / -1;
+}
+
+.summary-label {
+    font-size: 14px;
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+.summary-value {
+    font-size: 16px;
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.summary-item.highlight .summary-value {
+    font-size: 20px;
+    color: #d97706;
+}
+
+/* 加载动画 */
+.loading-animation, .greeting-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    gap: 16px;
+}
+
+.greeting-loading {
+    flex-direction: row;
+    padding: 0;
+    gap: 12px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.greeting-loading .spinner {
+    width: 20px;
+    height: 20px;
+    border-width: 3px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-animation p, .greeting-loading span {
+    font-size: 14px;
+    color: var(--text-light);
+    margin: 0;
 }

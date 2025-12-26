@@ -46,7 +46,6 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
-    max-height: 80vh;
 }
 
 .section-header {
@@ -120,27 +119,7 @@
 /* 热搜列表 */
 .hot-list {
     flex: 1;
-    overflow-y: auto;
     padding-right: 8px;
-}
-
-/* 自定义滚动条 */
-.hot-list::-webkit-scrollbar {
-    width: 6px;
-}
-
-.hot-list::-webkit-scrollbar-track {
-    background: rgba(168, 230, 207, 0.2);
-    border-radius: 3px;
-}
-
-.hot-list::-webkit-scrollbar-thumb {
-    background: #A8E6CF;
-    border-radius: 3px;
-}
-
-.hot-list::-webkit-scrollbar-thumb:hover {
-    background: #8FD4B8;
 }
 
 /* 热搜项 */
@@ -234,10 +213,6 @@
     .surf-main {
         grid-template-columns: 1fr;
         gap: 16px;
-    }
-    
-    .hot-list-section {
-        max-height: 60vh;
     }
     
     .section-header h2 {

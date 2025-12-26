@@ -144,7 +144,6 @@ async function fetchHtml(url) {
         const parser = new DOMParser();
         return parser.parseFromString(html, 'text/html');
     } catch (error) {
-        console.error('获取页面失败:', url, error);
         return null;
     }
 }

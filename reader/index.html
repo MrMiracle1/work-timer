@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的书架 - Work Timer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="reader-container">
+        <!-- 书架视图 -->
+        <div id="bookshelf-view" class="view active">
+            <div class="bookshelf-header">
+                <h1>📚 我的书架</h1>
+                <button class="import-btn" id="import-book-btn">
+                    <span>📖</span>
+                    <span>导入书籍</span>
+                </button>
+                <input type="file" id="book-file-input" accept=".txt,.epub,.pdf" style="display: none;" multiple>
+            </div>
+            
+            <div class="bookshelf-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="total-books">0</div>
+                    <div class="stat-label">藏书</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="reading-books">0</div>
+                    <div class="stat-label">在读</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="finished-books">0</div>
+                    <div class="stat-label">读完</div>
+                </div>
+            </div>
+            
+            <div class="books-grid" id="books-grid">
+                <!-- 书籍卡片将通过 JS 动态生成 -->
+                <div class="empty-bookshelf">
+                    <div class="empty-icon">📚</div>
+                    <div class="empty-text">书架空空如也</div>
+                    <div class="empty-hint">点击上方"导入书籍"按钮添加第一本书吧</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 阅读器视图 -->
+        <div id="reader-view" class="view">
+            <div class="reader-header" id="reader-header">
+                <button class="back-btn" id="back-to-shelf">← 返回书架</button>
+                <div class="book-title" id="current-book-title">书名</div>
+                <div class="reader-header-actions">
+                    <button class="toc-btn" id="toggle-toc" title="目录">📑</button>
+                    <button class="highlights-btn" id="view-highlights" title="查看高亮">📖</button>
+                    <button class="settings-btn" id="open-settings">⚙️</button>
+                </div>
+            </div>
+            
+            <div class="reader-body">
+                <div class="reader-content" id="reader-content">
+                    <!-- 内容通过 JS 加载 -->
+                </div>
+            </div>
+            
+            <div class="reader-footer">
+                <button class="nav-btn" id="prev-page">上一页</button>
+                <div class="progress-info">
+                    <span id="current-chapter">第1章</span>
+                    <span class="separator">·</span>
+                    <span id="reading-progress">0%</span>
+                </div>
+                <button class="nav-btn" id="next-page">下一页</button>
+            </div>
+            
+            <!-- 进度条（隐藏） -->
+            <div class="progress-bar-container" style="display: none;">
+                <input type="range" class="progress-slider" id="progress-slider" min="0" max="100" value="0">
+            </div>
+        </div>
+    </div>
+    
+    <!-- 删除确认弹窗 -->
+    <div class="modal" id="delete-modal">
+        <div class="modal-content">
+            <h3>确认删除</h3>
+            <p>确定要删除《<span id="delete-book-title"></span>》吗？</p>
+            <p class="warning-text">此操作不可撤销</p>
+            <div class="modal-actions">
+                <button class="cancel-btn" id="cancel-delete">取消</button>
+                <button class="confirm-btn" id="confirm-delete">删除</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 阅读设置弹窗 -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content settings-modal-content">
+            <div class="modal-header">
+                <h3>阅读设置</h3>
+                <button class="close-btn" id="close-settings">✕</button>
+            </div>
+            <div class="settings-body">
+                <div class="setting-group">
+                    <label>字体大小</label>
+                    <div class="font-size-controls">
+                        <button class="size-btn" data-size="16">小</button>
+                        <button class="size-btn active" data-size="18">中</button>
+                        <button class="size-btn" data-size="20">大</button>
+                        <button class="size-btn" data-size="22">超大</button>
+                    </div>
+                </div>
+                
+                <div class="setting-group">
+                    <label>背景颜色</label>
+                    <div class="theme-controls">
+                        <button class="theme-btn active" data-theme="white">
+                            <div class="theme-preview" style="background: #ffffff;"></div>
+                            <span>默认</span>
+                        </button>
+                        <button class="theme-btn" data-theme="sepia">
+                            <div class="theme-preview" style="background: #f4ecd8;"></div>
+                            <span>护眼</span>
+                        </button>
+                        <button class="theme-btn" data-theme="dark">
+                            <div class="theme-preview" style="background: #1a1a1a;"></div>
+                            <span>夜间</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="setting-group">
+                    <label>翻页模式</label>
+                    <div class="page-mode-controls">
+                        <button class="mode-btn active" data-mode="scroll">滚动</button>
+                        <button class="mode-btn" data-mode="page">翻页</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 目录弹窗 -->
+    <div class="modal" id="toc-modal">
+        <div class="modal-content toc-modal-content">
+            <div class="modal-header">
+                <h3>目录</h3>
+                <button class="close-btn" id="close-toc">✕</button>
+            </div>
+            <div class="toc-body" id="toc-list">
+                <!-- 目录项通过 JS 生成 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 文本选择菜单 -->
+    <div class="context-menu" id="text-context-menu">
+        <div class="menu-item" id="highlight-text">
+            <span>✨</span>
+            <span>高亮标记</span>
+        </div>
+        <div class="menu-item" id="add-note">
+            <span>📝</span>
+            <span>添加笔记</span>
+        </div>
+        <div class="menu-item" id="ask-ai">
+            <span>🤖</span>
+            <span>问AI</span>
+        </div>
+        <div class="menu-item" id="copy-text">
+            <span>📋</span>
+            <span>复制</span>
+        </div>
+        <div class="menu-item" id="remove-highlight">
+            <span>❌</span>
+            <span>取消高亮</span>
+        </div>
+    </div>
+    
+    <!-- AI问答侧边栏 -->
+    <div class="ai-sidebar" id="ai-ask-modal">
+        <div class="ai-sidebar-content">
+            <div class="ai-sidebar-header">
+                <h3>🤖 AI问书助手</h3>
+                <button class="minimize-btn" id="minimize-ai-sidebar" title="收起">▼</button>
+                <button class="close-btn" id="close-ai-ask">✕</button>
+            </div>
+            <div class="ai-ask-body">
+                <div class="selected-text-context" id="ai-selected-context"></div>
+                <div class="ai-answer-section">
+                    <div class="ai-answer-label">💡 AI解释：</div>
+                    <div class="ai-answer-content" id="ai-answer-content">
+                        <div class="loading-animation">
+                            <div class="spinner"></div>
+                            <p>正在思考...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="follow-up-section">
+                    <input type="text" class="follow-up-input" id="follow-up-input" placeholder="继续提问...">
+                    <button class="follow-up-btn" id="follow-up-btn">发送</button>
+                </div>
+                <div class="ai-actions">
+                    <button class="save-as-note-btn" id="save-ai-as-note">💾 保存为笔记</button>
+                </div>
+            </div>
+        </div>
+        <!-- 收起后的按钮 -->
+        <div class="ai-sidebar-tab" id="ai-sidebar-tab">
+            <button class="expand-btn" id="expand-ai-sidebar">
+                <span class="ai-status-icon">🤖</span>
+                <span class="vertical-text ai-status-text">AI助手</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- 笔记弹窗 -->
+    <div class="modal" id="note-modal">
+        <div class="modal-content note-modal-content">
+            <div class="modal-header">
+                <h3>📝 添加笔记</h3>
+                <button class="close-btn" id="close-note">✕</button>
+            </div>
+            <div class="note-body">
+                <div class="note-reference" id="note-reference"></div>
+                <textarea class="note-textarea" id="note-textarea" placeholder="写下你的想法..."></textarea>
+                <div class="note-actions">
+                    <button class="cancel-btn" id="cancel-note">取消</button>
+                    <button class="save-btn" id="save-note">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 高亮笔记管理弹窗 -->
+    <div class="modal" id="highlights-modal">
+        <div class="modal-content highlights-modal-content">
+            <div class="modal-header">
+                <h3>📖 高亮与笔记</h3>
+                <button class="close-btn" id="close-highlights">✕</button>
+            </div>
+            <div class="highlights-body">
+                <div class="highlights-filter">
+                    <button class="filter-btn active" data-filter="all">全部</button>
+                    <button class="filter-btn" data-filter="highlights">高亮</button>
+                    <button class="filter-btn" data-filter="notes">笔记</button>
+                </div>
+                <div class="highlights-list" id="highlights-list">
+                    <!-- 高亮项通过 JS 生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="../prompts.js"></script>
+    <script src="../ai-module.js"></script>
+    <script src="parser.js"></script>
+    <script src="reader.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

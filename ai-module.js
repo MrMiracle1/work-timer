@@ -59,28 +59,107 @@ async function callDeepSeekAPI(prompt, options = {}) {
 }
 
 /**
- * 获取 AI 问候语（带兜底）
- * @param {string} type - 问候类型
+ * 获取打卡问候语（简化版，不调用AI）
+ * @param {string} type - 打卡类型（CLOCK_IN/CLOCK_OUT）
  * @returns {Promise<object>} 返回结果对象
  */
 async function getAIGreeting(type) {
+    // 为了加快速度，直接返回固定文案，不调用AI
+    const greetings = {
+        'CLOCK_IN': [
+            '🌞 早上好！新的一天开始啦！',
+            '☀️ 早安！今天也要加油哦！',
+            '🌅 美好的一天从打卡开始！',
+            '🚀 准备好开始一天的工作了吗？',
+            '✨ 新的一天，新的开始！'
+        ],
+        'CLOCK_OUT': [
+            '🎉 辛苦一天了，好好休息！',
+            '🎆 一天的工作圆满完成！',
+            '🌟 下班啦！享受你的个人时间吧！',
+            '🎈 今天表现很棒，明天继续加油！',
+            '✅ 完美的一天，赶紧回家休息吧！'
+        ]
+    };
+    
+    const messages = greetings[type] || greetings['CLOCK_IN'];
+    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+    
+    return {
+        success: true,
+        message: randomMessage,
+        isAI: false
+    };
+}
+
+/**
+ * 获取摸鱻吉日签（带兜底）
+ * @returns {Promise<object>} 返回结果对象
+ */
+async function getMoyuFortune() {
     try {
-        const prompt = AI_PROMPTS[type];
-        if (!prompt) {
-            throw new Error('无效的问候类型');
-        }
+        const prompt = window.AI_PROMPTS.MOYU_FORTUNE;
+        const response = await callDeepSeekAPI(prompt, { 
+            maxTokens: 500,
+            temperature: 1.3
+        });
         
-        const greeting = await callDeepSeekAPI(prompt, { maxTokens: 100 });
+        // 解析JSON响应
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            const fortune = JSON.parse(jsonMatch[0]);
+            return {
+                success: true,
+                data: fortune,
+                isAI: true
+            };
+        }
+        throw new Error('无法解析AI返回的JSON');
+    } catch (error) {
+        console.error('摸鱻吉日签获取失败:', error);
+        return {
+            success: false,
+            data: window.FALLBACK_MESSAGES.MOYU_FORTUNE,
+            isAI: false,
+            error: error.message
+        };
+    }
+}
+
+/**
+ * 生成工作总结（带兜底）
+ * @param {object} workData - 工作数据
+ * @returns {Promise<object>} 返回结果对象
+ */
+async function generateWorkSummary(workData) {
+    try {
+        const { clockInTime, clockOutTime, relaxCount, dailyIncome } = workData;
+        
+        let prompt = window.AI_PROMPTS.WORK_SUMMARY;
+        prompt = prompt.replace('{CLOCK_IN_TIME}', clockInTime);
+        prompt = prompt.replace(/{CLOCK_IN_TIME}/g, clockInTime);
+        prompt = prompt.replace('{CLOCK_OUT_TIME}', clockOutTime);
+        prompt = prompt.replace(/{CLOCK_OUT_TIME}/g, clockOutTime);
+        prompt = prompt.replace('{RELAX_COUNT}', relaxCount);
+        prompt = prompt.replace(/{RELAX_COUNT}/g, relaxCount);
+        prompt = prompt.replace('{DAILY_INCOME}', dailyIncome);
+        prompt = prompt.replace(/{DAILY_INCOME}/g, dailyIncome);
+        
+        const summary = await callDeepSeekAPI(prompt, { 
+            maxTokens: 300,
+            temperature: 1.4
+        });
+        
         return {
             success: true,
-            message: greeting,
+            summary: summary,
             isAI: true
         };
     } catch (error) {
-        console.error('AI 问候语获取失败:', error);
+        console.error('工作总结生成失败:', error);
         return {
             success: false,
-            message: getRandomFallbackMessage(type),
+            summary: window.FALLBACK_MESSAGES.WORK_SUMMARY,
             isAI: false,
             error: error.message
         };
@@ -95,7 +174,7 @@ async function getAIGreeting(type) {
  */
 async function callAIAnalysis(promptType, content) {
     try {
-        const promptTemplate = AI_PROMPTS[promptType];
+        const promptTemplate = window.AI_PROMPTS[promptType];
         if (!promptTemplate) {
             throw new Error('无效的 Prompt 类型');
         }
@@ -117,7 +196,7 @@ async function callAIAnalysis(promptType, content) {
         console.error('AI 分析失败:', error);
         return {
             success: false,
-            content: getRandomFallbackMessage(promptType),
+            content: window.getRandomFallbackMessage(promptType),
             isAI: false,
             error: error.message
         };
@@ -129,6 +208,8 @@ if (typeof window !== 'undefined') {
     window.AIModule = {
         callDeepSeekAPI,
         getAIGreeting,
+        getMoyuFortune,
+        generateWorkSummary,
         callAIAnalysis
     };
 }

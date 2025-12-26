@@ -50,7 +50,6 @@ async function loadWeiboHot() {
     } catch (error) {
         hideLoading(loadingEl);
         showError(listEl, '加载失败，请稍后重试');
-        console.error('微博热搜加载失败:', error);
     }
 }
 
@@ -82,7 +81,6 @@ async function loadDouyinHot() {
     } catch (error) {
         hideLoading(loadingEl);
         showError(listEl, '加载失败，请稍后重试');
-        console.error('抖音热搜加载失败:', error);
     }
 }
 
